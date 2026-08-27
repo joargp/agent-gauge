@@ -20,6 +20,18 @@ final class UsageFormattingTests: XCTestCase {
         )
     }
 
+    func testResetDateDescriptionIncludesDateAndTime() {
+        let resetDate = Date(timeIntervalSince1970: 1_735_737_300)
+        let description = UsageFormatting.resetDateDescription(
+            resetsAt: resetDate,
+            now: resetDate.addingTimeInterval(-60)
+        )
+
+        XCTAssertNotNil(description)
+        XCTAssertTrue(description?.contains(":") == true)
+        XCTAssertNil(UsageFormatting.resetDateDescription(resetsAt: nil))
+    }
+
     func testPlanNameIsHumanReadable() {
         XCTAssertEqual(UsageFormatting.planDisplayName("chatgpt_pro"), "Chatgpt Pro")
     }

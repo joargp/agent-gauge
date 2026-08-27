@@ -23,6 +23,22 @@ enum UsageFormatting {
         return "Resets in \(max(1, minutes))m"
     }
 
+    static func resetDateDescription(resetsAt: Date?, now: Date = Date()) -> String? {
+        guard let resetsAt else { return nil }
+
+        var format = Date.FormatStyle.dateTime
+            .month(.abbreviated)
+            .day()
+            .hour()
+            .minute()
+
+        if !Calendar.autoupdatingCurrent.isDate(resetsAt, equalTo: now, toGranularity: .year) {
+            format = format.year()
+        }
+
+        return resetsAt.formatted(format)
+    }
+
     static func lastUpdatedDescription(_ date: Date?, now: Date = Date()) -> String {
         guard let date else { return "Not updated yet" }
         let seconds = max(0, Int(now.timeIntervalSince(date)))

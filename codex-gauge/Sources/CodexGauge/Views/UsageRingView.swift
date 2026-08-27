@@ -51,14 +51,25 @@ struct UsageRingView: View {
                 .font(.subheadline.weight(.semibold))
 
             TimelineView(.periodic(from: .now, by: 30)) { context in
-                Text(UsageFormatting.resetDescription(
-                    resetsAt: window?.resetsAt,
-                    now: context.date
-                ))
+                VStack(spacing: 2) {
+                    Text(UsageFormatting.resetDescription(
+                        resetsAt: window?.resetsAt,
+                        now: context.date
+                    ))
+                    .foregroundStyle(.secondary)
+
+                    if let resetDate = UsageFormatting.resetDateDescription(
+                        resetsAt: window?.resetsAt,
+                        now: context.date
+                    ) {
+                        Text(resetDate)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
                 .font(.caption2)
-                .foregroundStyle(.secondary)
                 .monospacedDigit()
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
             }
         }
         .frame(maxWidth: .infinity)
@@ -69,6 +80,9 @@ struct UsageRingView: View {
 
     private var accessibilityValue: String {
         guard let window else { return "Usage unavailable" }
-        return "\(UsageFormatting.wholePercent(window.remainingPercent)) percent remaining. \(UsageFormatting.resetDescription(resetsAt: window.resetsAt))"
+        let relativeReset = UsageFormatting.resetDescription(resetsAt: window.resetsAt)
+        let resetDate = UsageFormatting.resetDateDescription(resetsAt: window.resetsAt)
+            .map { ". \($0)" } ?? ""
+        return "\(UsageFormatting.wholePercent(window.remainingPercent)) percent remaining. \(relativeReset)\(resetDate)"
     }
 }
