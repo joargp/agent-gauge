@@ -1,32 +1,51 @@
 import SwiftUI
 
 struct UsageRingView: View {
+    private static let centerRadius = 52.0
+    private static let lineWidth = 10.0
+
     let title: String
     let window: UsageWindow?
     let tint: Color
 
-    private var progress: Double {
+    private var rawProgress: Double {
         window?.remainingFraction ?? 0
     }
 
+    private var progress: Double {
+        RingGeometry.trimProgress(
+            for: rawProgress,
+            centerRadius: Self.centerRadius,
+            lineWidth: Self.lineWidth
+        )
+    }
+
+    private var lineCap: CGLineCap {
+        RingGeometry.usesRoundedCaps(
+            for: rawProgress,
+            centerRadius: Self.centerRadius,
+            lineWidth: Self.lineWidth
+        ) ? .round : .butt
+    }
+
     private var ringColor: Color {
-        guard let remaining = window?.remainingPercent else { return .secondary }
-        if remaining <= 10 { return .red }
-        if remaining <= 25 { return .orange }
-        return tint
+        GaugePalette.ringColor(
+            remainingPercent: window?.remainingPercent,
+            healthy: tint
+        )
     }
 
     var body: some View {
         VStack(spacing: 9) {
             ZStack {
                 Circle()
-                    .stroke(.tertiary, style: StrokeStyle(lineWidth: 10))
+                    .stroke(.tertiary, style: StrokeStyle(lineWidth: Self.lineWidth))
 
                 Circle()
                     .trim(from: 0, to: progress)
                     .stroke(
                         ringColor,
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                        style: StrokeStyle(lineWidth: Self.lineWidth, lineCap: lineCap)
                     )
                     .rotationEffect(.degrees(-90))
                     .animation(.easeInOut(duration: 0.45), value: progress)

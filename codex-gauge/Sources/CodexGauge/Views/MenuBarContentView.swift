@@ -12,12 +12,12 @@ struct MenuBarContentView: View {
                 UsageRingView(
                     title: "5 hours",
                     window: store.usage?.fiveHourWindow,
-                    tint: .cyan
+                    tint: GaugePalette.fiveHour
                 )
                 UsageRingView(
                     title: "Weekly",
                     window: store.usage?.weeklyWindow,
-                    tint: .indigo
+                    tint: GaugePalette.weekly
                 )
             }
 
@@ -84,7 +84,7 @@ struct MenuBarContentView: View {
         HStack(spacing: 10) {
             Image(systemName: "gauge.medium")
                 .font(.title2)
-                .foregroundStyle(.tint)
+                .foregroundStyle(GaugePalette.weekly)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text("Codex Gauge")
