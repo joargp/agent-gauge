@@ -34,7 +34,7 @@ The cache updates while an interactive Claude Code session renders its status li
 - **Neutral** — captured within one hour
 - **Orange** — older; likely no active Claude Code session
 
-If a cached `resets_at` passes while Claude Code is idle, Claude Gauge stops showing the old percentage and marks that window **Rolled over · Awaiting next capture**.
+If a cached `resets_at` passes while Claude Code is idle, Claude Gauge stops showing the old percentage and marks that window **No recent data · Start Claude Code to refresh**.
 
 The Refresh button re-reads the cache and installation state. Claude Code currently exposes no non-interactive `usage` command, so the app cannot force the CLI to produce a new server-side reading.
 

@@ -113,13 +113,10 @@ struct MenuBarContentView: View {
                     .fill(freshnessDotColor(freshness))
                     .frame(width: 7, height: 7)
 
-                Text(UsageFormatting.lastUpdatedDescription(
-                    store.usage?.capturedAt,
-                    now: context.date
-                ))
+                Text(dataAgeDescription(freshness: freshness, now: context.date))
 
                 if freshness == .stale {
-                    Text("· no recent capture")
+                    Text("· start Claude Code to refresh")
                         .foregroundStyle(.tertiary)
                 }
 
@@ -133,6 +130,13 @@ struct MenuBarContentView: View {
             .font(.caption)
             .monospacedDigit()
         }
+    }
+
+    private func dataAgeDescription(freshness: DataFreshness?, now: Date) -> String {
+        if freshness == .stale {
+            return UsageFormatting.lastCaptureDescription(store.usage?.capturedAt, now: now)
+        }
+        return UsageFormatting.lastUpdatedDescription(store.usage?.capturedAt, now: now)
     }
 
     private func freshnessDotColor(_ freshness: DataFreshness?) -> Color {

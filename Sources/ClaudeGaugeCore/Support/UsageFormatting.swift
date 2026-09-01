@@ -46,13 +46,26 @@ public enum UsageFormatting {
     }
 
     public static func lastUpdatedDescription(_ date: Date?, now: Date = Date()) -> String {
+        ageDescription(date, now: now, prefix: "Updated", unavailable: "Update time unavailable")
+    }
+
+    public static func lastCaptureDescription(_ date: Date?, now: Date = Date()) -> String {
+        ageDescription(date, now: now, prefix: "Last capture", unavailable: "Capture time unavailable")
+    }
+
+    private static func ageDescription(
+        _ date: Date?,
+        now: Date,
+        prefix: String,
+        unavailable: String
+    ) -> String {
         guard let date else { return "Not captured yet" }
         let interval = now.timeIntervalSince(date)
-        guard interval.isFinite else { return "Update time unavailable" }
+        guard interval.isFinite else { return unavailable }
         let seconds = Int(min(1_000_000_000, max(0, interval).rounded(.down)))
-        if seconds < 60 { return "Updated just now" }
-        if seconds < 3_600 { return "Updated \(seconds / 60)m ago" }
-        if seconds < 86_400 { return "Updated \(seconds / 3_600)h ago" }
-        return "Updated \(seconds / 86_400)d ago"
+        if seconds < 60 { return "\(prefix) just now" }
+        if seconds < 3_600 { return "\(prefix) \(seconds / 60)m ago" }
+        if seconds < 86_400 { return "\(prefix) \(seconds / 3_600)h ago" }
+        return "\(prefix) \(seconds / 86_400)d ago"
     }
 }

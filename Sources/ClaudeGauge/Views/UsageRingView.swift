@@ -65,13 +65,15 @@ struct UsageRingView: View {
                         Text("\(UsageFormatting.wholePercent(window.remainingPercent))%")
                             .font(.system(size: 25, weight: .semibold, design: .rounded))
                             .monospacedDigit()
+
+                        Text("left")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     } else {
                         Text("—")
                             .font(.system(size: 25, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.secondary)
                     }
-                    Text("left")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
                 }
             }
             .frame(width: 104, height: 104)
@@ -106,7 +108,7 @@ struct UsageRingView: View {
         case let .present(window):
             UsageFormatting.resetDescription(resetsAt: window.resetsAt, now: now)
         case .rolledOver:
-            "Rolled over"
+            "No recent data"
         case .awaitingCapture:
             "Awaiting first capture"
         }
@@ -116,10 +118,8 @@ struct UsageRingView: View {
         switch state {
         case let .present(window):
             UsageFormatting.resetDateDescription(resetsAt: window.resetsAt, now: now)
-        case .rolledOver:
-            "Awaiting next capture"
-        case .awaitingCapture:
-            nil
+        case .rolledOver, .awaitingCapture:
+            "Start Claude Code to refresh"
         }
     }
 
@@ -131,9 +131,9 @@ struct UsageRingView: View {
                 .map { ". \($0)" } ?? ""
             return "\(UsageFormatting.wholePercent(window.remainingPercent)) percent remaining. \(relativeReset)\(resetDate)"
         case .rolledOver:
-            return "Window rolled over. Waiting for next capture."
+            return "No recent data. Start Claude Code to refresh."
         case .awaitingCapture:
-            return "Usage unavailable"
+            return "Awaiting first capture. Start Claude Code to refresh."
         }
     }
 }

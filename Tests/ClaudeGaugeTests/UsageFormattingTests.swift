@@ -54,6 +54,16 @@ final class UsageFormattingTests: XCTestCase {
         )
     }
 
+    func testLastCaptureDescriptions() {
+        let now = Date(timeIntervalSince1970: 200_000)
+
+        XCTAssertEqual(UsageFormatting.lastCaptureDescription(nil, now: now), "Not captured yet")
+        XCTAssertEqual(
+            UsageFormatting.lastCaptureDescription(now.addingTimeInterval(-7_200), now: now),
+            "Last capture 2h ago"
+        )
+    }
+
     func testExtremeDatesNeverTrapFormatting() {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let extremeFuture = Date(timeIntervalSince1970: 1e20)
