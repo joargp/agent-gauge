@@ -111,7 +111,7 @@ final class CaptureRunnerTests: XCTestCase {
         XCTAssertEqual(payload.claudeCodeVersion, "2.1.251")
     }
 
-    func testConcurrentSessionMergeCannotRegressUsageWindow() throws {
+    func testLaterCaptureCanReflectOutOfBandResetWithinSameWindow() throws {
         let first = try CaptureRunner.run(
             input: input(
                 fiveHour: #"{"used_percentage":50,"resets_at":2000000000}"#
@@ -121,18 +121,18 @@ final class CaptureRunnerTests: XCTestCase {
         )
         let existingCache = try XCTUnwrap(first.cacheData)
 
-        let staleSameWindow = try CaptureRunner.run(
+        let resetSameWindow = try CaptureRunner.run(
             input: input(
                 fiveHour: #"{"used_percentage":20,"resets_at":2000000000}"#
             ),
             existingCache: existingCache,
             now: Date(timeIntervalSince1970: 1_738_425_020)
         )
-        let stalePayload = try JSONDecoder().decode(
+        let resetPayload = try JSONDecoder().decode(
             UsageCachePayload.self,
-            from: XCTUnwrap(staleSameWindow.cacheData)
+            from: XCTUnwrap(resetSameWindow.cacheData)
         )
-        XCTAssertEqual(stalePayload.fiveHour?.usedPercentage, 50)
+        XCTAssertEqual(resetPayload.fiveHour?.usedPercentage, 20)
 
         let newerWindow = try CaptureRunner.run(
             input: input(
@@ -147,6 +147,30 @@ final class CaptureRunnerTests: XCTestCase {
         )
         XCTAssertEqual(newerPayload.fiveHour?.usedPercentage, 5)
         XCTAssertEqual(newerPayload.fiveHour?.resetsAt, 2_000_100_000)
+    }
+
+    func testDelayedCaptureCannotRegressSameUsageWindow() throws {
+        let first = try CaptureRunner.run(
+            input: input(
+                fiveHour: #"{"used_percentage":50,"resets_at":2000000000}"#
+            ),
+            existingCache: nil,
+            now: Date(timeIntervalSince1970: 1_800_000_100)
+        )
+        let existingCache = try XCTUnwrap(first.cacheData)
+
+        let delayed = try CaptureRunner.run(
+            input: input(
+                fiveHour: #"{"used_percentage":20,"resets_at":2000000000}"#
+            ),
+            existingCache: existingCache,
+            now: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        XCTAssertNil(delayed.cacheData)
+        let payload = try JSONDecoder().decode(UsageCachePayload.self, from: existingCache)
+        XCTAssertEqual(payload.fiveHour?.usedPercentage, 50)
+        XCTAssertEqual(payload.capturedAt, 1_800_000_100)
     }
 
     func testInvalidPreviousCacheIsDiscardedBeforeMerge() throws {
@@ -184,10 +208,8 @@ final class CaptureRunnerTests: XCTestCase {
             now: Date(timeIntervalSince1970: 1_800_000_000)
         )
 
-        let payload = try JSONDecoder().decode(
-            UsageCachePayload.self,
-            from: XCTUnwrap(delayed.cacheData)
-        )
+        XCTAssertNil(delayed.cacheData)
+        let payload = try JSONDecoder().decode(UsageCachePayload.self, from: existingCache)
         XCTAssertEqual(payload.capturedAt, 1_800_000_100)
     }
 

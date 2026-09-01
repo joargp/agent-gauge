@@ -54,11 +54,15 @@ public enum CaptureRunner {
         let payload = UsageCachePayload(
             fiveHour: mergedWindow(
                 incoming: capture.fiveHour.map(CacheWindow.init),
-                previous: previousPayload?.fiveHour
+                previous: previousPayload?.fiveHour,
+                incomingCapturedAt: roundedAt,
+                previousCapturedAt: previousPayload?.capturedAt
             ),
             sevenDay: mergedWindow(
                 incoming: capture.sevenDay.map(CacheWindow.init),
-                previous: previousPayload?.sevenDay
+                previous: previousPayload?.sevenDay,
+                incomingCapturedAt: roundedAt,
+                previousCapturedAt: previousPayload?.capturedAt
             ),
             capturedAt: max(roundedAt, previousPayload?.capturedAt ?? roundedAt),
             claudeCodeVersion: capture.claudeCodeVersion ?? previousPayload?.claudeCodeVersion
@@ -108,12 +112,15 @@ public enum CaptureRunner {
         return text
     }
 
-    /// Reconciles concurrent sessions without allowing an older session to
-    /// regress a newer cache entry. Reset times advance between windows; usage
-    /// is monotonic within a window that has the same reset time.
+    /// Reconciles concurrent sessions without allowing an older capture to
+    /// regress a newer cache entry. A later capture replaces an earlier value
+    /// even when usage decreases within the same window: Anthropic can apply
+    /// an out-of-band usage reset without changing `resets_at`.
     private static func mergedWindow(
         incoming: CacheWindow?,
-        previous: CacheWindow?
+        previous: CacheWindow?,
+        incomingCapturedAt: TimeInterval,
+        previousCapturedAt: TimeInterval?
     ) -> CacheWindow? {
         guard let incoming else { return previous }
         guard let previous else { return incoming }
@@ -130,8 +137,9 @@ public enum CaptureRunner {
             break
         }
 
-        return incoming.usedPercentage >= previous.usedPercentage
-            ? incoming
-            : previous
+        guard incomingCapturedAt >= (previousCapturedAt ?? 0) else {
+            return previous
+        }
+        return incoming
     }
 }
