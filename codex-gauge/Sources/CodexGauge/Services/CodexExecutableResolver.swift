@@ -46,6 +46,7 @@ struct CodexExecutableResolver: Sendable {
             executable.deletingLastPathComponent().path,
             homeDirectory.appendingPathComponent("Library/pnpm/bin").path,
             homeDirectory.appendingPathComponent(".local/bin").path,
+            homeDirectory.appendingPathComponent(".local/share/mise/shims").path,
             homeDirectory.appendingPathComponent(".volta/bin").path,
             "/opt/homebrew/bin",
             "/usr/local/bin",

@@ -28,7 +28,7 @@ codex login
 - Swift 6 / Xcode command-line tools
 - A current Codex CLI installation signed in with a ChatGPT subscription
 
-Codex Gauge prefers the self-contained CLI bundled with the ChatGPT or Codex macOS app, then resolves `codex` from `PATH` and common user install locations, including `~/Library/pnpm/bin`. This avoids GUI-launch PATH issues where a package-manager shim cannot find Node. For a custom install, set `CODEX_GAUGE_CODEX_PATH` to the executable path before launching the app.
+Codex Gauge prefers the self-contained CLI bundled with the ChatGPT or Codex macOS app, then resolves `codex` from `PATH` and common user install locations, including `~/Library/pnpm/bin`. The child process PATH includes mise's Node shims, so pnpm's launcher can find Node even when the app starts with Finder's minimal PATH. For a custom install, set `CODEX_GAUGE_CODEX_PATH` to the executable path before launching the app.
 
 ## Build, test, and run
 
