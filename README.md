@@ -12,6 +12,19 @@ Each item draws two nested rings for the percentage remaining in each window. It
 
 Some plans have no 5-hour window. Codex Pro Lite, for example, only reports a weekly limit. That ring then reads **No limit on this plan**.
 
+## Download
+
+Each [release](https://github.com/joargp/agent-gauge/releases) has a ready-made `AgentGauge-<version>.zip`, built by GitHub Actions for both Apple silicon and Intel Macs.
+
+1. Download and unzip it, then move **Agent Gauge** to your Applications folder.
+2. Open it. The welcome window lets you pick agents, connect Claude Code's status line, and turn on launch at login.
+
+Release builds are not notarized by Apple yet, so macOS blocks the first launch. Allow it in **System Settings → Privacy & Security → Open Anyway**, or run:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Agent Gauge.app"
+```
+
 ## Claude
 
 ### Privacy and authentication
@@ -165,19 +178,6 @@ CODEX_GAUGE_LIVE_TEST=1 swift test --filter LiveCodexIntegrationTests
 ```
 
 This test reads only usage metadata and never prints tokens.
-
-## Download
-
-Each [release](https://github.com/joargp/agent-gauge/releases) has a ready-made `AgentGauge-<version>.zip`, built by GitHub Actions for both Apple silicon and Intel Macs.
-
-1. Download and unzip it, then move **Agent Gauge** to your Applications folder.
-2. Open it. The welcome window lets you pick agents, connect Claude Code's status line, and turn on launch at login.
-
-Release builds are not notarized by Apple yet, so macOS blocks the first launch. Allow it in **System Settings → Privacy & Security → Open Anyway**, or run:
-
-```bash
-xattr -dr com.apple.quarantine "/Applications/Agent Gauge.app"
-```
 
 ## Install from source
 
