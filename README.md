@@ -1,17 +1,24 @@
-# Claude Gauge
+# Agent Gauge
 
-Claude Gauge is a private, native macOS menu bar app for the two Claude Code subscription limits that matter most on a Claude Max plan:
+Agent Gauge is a private, native macOS menu bar app for the subscription limits of your coding agents. It shows one menu bar item per agent, and you choose which ones appear:
 
-- **5-hour usage** — a ring showing the percentage remaining in the active five-hour window.
-- **Weekly usage** — a second ring showing the percentage remaining in the seven-day window.
+- **Claude** — Claude Code's 5-hour and weekly windows on a Claude Pro or Max plan.
+- **Codex** — Codex's 5-hour and weekly windows on a ChatGPT plan.
 
-The menu bar shows both remaining percentages at a glance. The popover also shows how old the last capture is.
+Each item draws two nested rings for the percentage remaining in each window. Its popover shows the remaining percentages, reset times, how old the reading is, and a settings menu (gear) with:
 
-## Privacy and authentication
+- **Show Claude** / **Show Codex** — add or remove that agent's menu bar item. A hidden agent does no background work. The last visible item can't be hidden.
+- **Launch at Login** — registers Agent Gauge as a login item (System Settings → General → Login Items).
 
-Claude Gauge does **not** read your macOS Keychain, Claude OAuth token, prompts, transcripts, source code, or session history. It makes no network requests.
+Some plans have no 5-hour window. Codex Pro Lite, for example, only reports a weekly limit. That ring then reads **No limit on this plan**.
 
-Claude Code officially supplies live subscription-rate-limit metadata to configured statusline commands. Claude Gauge installs a small local capture binary as that command. The helper receives the full statusline JSON on stdin, decodes only the fields below, and never persists the raw input:
+## Claude
+
+### Privacy and authentication
+
+For Claude, Agent Gauge does **not** read your macOS Keychain, Claude OAuth token, prompts, transcripts, source code, or session history, and it makes no network requests.
+
+Claude Code officially supplies live subscription-rate-limit metadata to configured statusline commands. Agent Gauge installs a small local capture binary as that command. The helper receives the full statusline JSON on stdin, decodes only the fields below, and never persists the raw input:
 
 - 5-hour and 7-day percentages used
 - their reset timestamps
@@ -26,78 +33,21 @@ It writes that metadata atomically to:
 
 The menu bar app re-reads that file every ten seconds and on demand. This avoids the persistent macOS permission prompts caused when third-party apps poll Claude Code's Keychain item and token refresh recreates its access-control list.
 
-## Data freshness
+### Data freshness
 
-The cache updates while an interactive Claude Code session renders its status line. Usage cannot increase while Claude Code is idle, so the last captured value remains meaningful. Claude Gauge always displays its age:
+The cache updates while an interactive Claude Code session renders its status line. Usage cannot increase while Claude Code is idle, so the last captured value remains meaningful. Agent Gauge always displays its age:
 
 - **Green** — captured within two minutes
 - **Neutral** — captured within one hour
 - **Orange** — older; likely no active Claude Code session
 
-If a cached `resets_at` passes while Claude Code is idle, Claude Gauge stops showing the old percentage and marks that window **No recent data · Start Claude Code to refresh**.
+If a cached `resets_at` passes while Claude Code is idle, Agent Gauge stops showing the old percentage and marks that window **No recent data · Start Claude Code to refresh**.
 
 The Refresh button re-reads the cache and installation state. Claude Code currently exposes no non-interactive `usage` command, so the app cannot force the CLI to produce a new server-side reading.
 
-## Requirements
-
-- macOS 14 or newer
-- Swift 6 / Xcode command-line tools
-- Claude Code 2.1.80 or newer, signed in with a Claude.ai Pro or Max subscription
-
-Your local Claude Code version is shown in the popover after the first capture.
-
-## Build, test, and run
-
-```bash
-swift test
-./script/build_and_run.sh --verify
-```
-
-The run script builds a real menu-bar-only app bundle at:
-
-```text
-dist/Claude Gauge.app
-```
-
-Other supported modes:
-
-```bash
-./script/build_and_run.sh
-./script/build_and_run.sh --debug
-./script/build_and_run.sh --logs
-./script/build_and_run.sh --telemetry
-```
-
-## Install and launch at login
-
-Install the optimized app to `~/Applications`, register its launch agent, install the capture helper, and configure Claude Code's status line:
-
-```bash
-./script/install.sh
-```
-
-The installer:
-
-1. Installs and verifies `Claude Gauge.app` plus `~/Library/LaunchAgents/com.joar.claudegauge.plist`.
-2. Copies the capture helper to `~/.claude/claude-gauge/capture`.
-3. Adds this entry to `~/.claude/settings.json`:
-
-   ```json
-   {
-     "statusLine": {
-       "type": "command",
-       "command": "/Users/you/.claude/claude-gauge/capture"
-     }
-   }
-   ```
-
-The installer fails closed for empty, unreadable, malformed, or foreign statusLine settings. It never rewrites them, and restores any previous app/launch-agent installation if setup fails.
-
-After installation, restart any existing Claude Code sessions (or start a new one) and send one message. Sessions already running during installation may not load the new statusLine command. Anthropic populates `rate_limits` after the first API response in the restarted session.
-
 ### Existing custom status line
 
-If you already use a custom status line, keep it and feed the same stdin JSON to Claude Gauge from your statusline command. One shell pattern is:
+If you already use a custom status line, keep it and feed the same stdin JSON to Agent Gauge from your statusline command. First install only the helper:
 
 ```bash
 CAPTURE="$(swift build --configuration release --show-bin-path)/claude-gauge-capture"
@@ -110,9 +60,9 @@ Then prefix your existing `statusLine.command` with:
 tee >(~/.claude/claude-gauge/capture >/dev/null) | your-statusline-command
 ```
 
-The exact wrapper depends on how your existing command reads stdin; Claude Gauge deliberately refuses to overwrite it automatically.
+The exact wrapper depends on how your existing command reads stdin. The installer deliberately refuses to overwrite a custom status line.
 
-If you later uninstall Claude Gauge, remove that tee segment from your custom statusLine command manually. The uninstaller refuses to delete the helper while a custom status line still references it.
+If you later uninstall Agent Gauge, remove that tee segment from your custom statusLine command manually. The uninstaller refuses to delete the helper while a custom status line still references it.
 
 ### Diagnostics
 
@@ -120,34 +70,9 @@ If you later uninstall Claude Gauge, remove that tee segment from your custom st
 ~/.claude/claude-gauge/capture status
 ```
 
-To remove the app, launch agent, and exact user-level statusLine entry installed by Claude Gauge:
+### Research basis
 
-```bash
-./script/uninstall.sh
-```
-
-The helper and cache are intentionally preserved because project-local Claude settings can also reference them, and the uninstaller cannot safely discover every project. If any custom, foreign, malformed, or unreadable user statusLine remains, uninstall also fails closed. Symlink-managed user settings are updated through their resolved target without replacing the symlink. Remove or detach conflicting settings, then rerun.
-
-After checking that no user or project status line references Claude Gauge, you can explicitly purge the preserved files:
-
-```bash
-rm -rf ~/.claude/claude-gauge
-```
-
-## Architecture
-
-- `ClaudeGaugeCore/` — normalized usage models, official statusline JSON decoding, cache format, formatting, and settings mutation
-- `ClaudeGaugeCapture/` — fast stdin capture binary and statusLine install/uninstall commands
-- `ClaudeGauge/App/` — SwiftUI menu bar scene
-- `ClaudeGauge/Stores/` — refresh lifecycle and stale-data preservation
-- `ClaudeGauge/Services/` — cache reader and installation status
-- `ClaudeGauge/Views/` — status label, popover, usage rings, and data-age indicator
-
-Cache updates are serialized with a local file lock and use atomic replacement. Concurrent sessions reconcile by reset timestamp and used percentage so an older session cannot regress a newer window. The app polls the complete cache every ten seconds, avoiding watcher lifecycle races.
-
-## Research basis
-
-Claude Gauge relies only on Anthropic's documented statusline interface:
+The Claude side relies only on Anthropic's documented statusline interface:
 
 - https://code.claude.com/docs/en/statusline
 
@@ -163,3 +88,130 @@ version
 ```
 
 `rate_limits` appears for Claude.ai Pro/Max subscribers after the first API response, and Claude Code drops a window once its `resets_at` has passed.
+
+## Codex
+
+### Privacy and authentication
+
+Agent Gauge uses the Codex login that already exists on this Mac. Once a minute, and when you press **Refresh**, it starts the installed `codex app-server` locally and asks it for `account/rateLimits/read` over stdio.
+
+- It does **not** read, copy, or store Codex access or refresh tokens.
+- It does **not** inspect prompts, sessions, transcripts, or source code.
+- It does **not** log app-server stderr or credentials.
+- Codex itself owns OAuth token refresh and account routing.
+
+If the popover says Codex is not signed in, run:
+
+```bash
+codex login
+```
+
+### Finding the Codex CLI
+
+Agent Gauge prefers the self-contained CLI bundled with the ChatGPT or Codex macOS app, then resolves `codex` from `PATH` and common user install locations, including `~/Library/pnpm/bin`. The child process PATH includes mise's Node shims, so pnpm's launcher can find Node even when the app starts with Finder's minimal PATH. For a custom install, set `CODEX_GAUGE_CODEX_PATH` to the executable path before launching the app.
+
+### Research basis
+
+Agent Gauge deliberately uses the local app-server instead of directly calling the private `https://chatgpt.com/backend-api/wham/usage` endpoint. This keeps credential storage, refresh, and workspace selection inside Codex.
+
+- [Official Codex app-server protocol and rate-limit API](https://github.com/openai/codex/blob/656a2d0905c9e0b9bdade1badab07ef6d42ca17c/codex-rs/app-server/README.md)
+- [Official backend usage client](https://github.com/openai/codex/blob/656a2d0905c9e0b9bdade1badab07ef6d42ca17c/codex-rs/backend-client/src/client.rs)
+- [Official rate-limit payload models](https://github.com/openai/codex/blob/656a2d0905c9e0b9bdade1badab07ef6d42ca17c/codex-rs/codex-backend-openapi-models/src/models/rate_limit_status_payload.rs)
+- [CodexBar's app-server integration](https://github.com/steipete/CodexBar/blob/b079e9bcd946304ca4ca916d0eff89b8453a273e/Sources/CodexBarCore/UsageFetcher.swift)
+
+Windows are classified by their reported duration (`300` and `10,080` minutes), not by response order. `codex app-server` is currently labeled experimental by the CLI, so its wire protocol can evolve. The integration is covered with response fixtures and a gated live test.
+
+## Requirements
+
+- macOS 14 or newer
+- Swift 6 / Xcode command-line tools
+- For Claude: Claude Code 2.1.80 or newer, signed in with a Claude.ai Pro or Max subscription
+- For Codex: a current Codex CLI installation signed in with a ChatGPT subscription
+
+## Build, test, and run
+
+```bash
+swift test
+./script/build_and_run.sh --verify
+```
+
+The run script builds a real menu-bar-only app bundle at:
+
+```text
+dist/Agent Gauge.app
+```
+
+Other supported modes:
+
+```bash
+./script/build_and_run.sh
+./script/build_and_run.sh --debug
+./script/build_and_run.sh --logs
+./script/build_and_run.sh --telemetry
+```
+
+To verify the complete local Codex login and app-server path on this Mac:
+
+```bash
+CODEX_GAUGE_LIVE_TEST=1 swift test --filter LiveCodexIntegrationTests
+```
+
+This test reads only usage metadata and never prints tokens.
+
+## Install
+
+```bash
+./script/install.sh
+```
+
+The installer:
+
+1. Installs `Agent Gauge.app` to `~/Applications`.
+2. Copies the Claude capture helper to `~/.claude/claude-gauge/capture` and adds this entry to `~/.claude/settings.json`:
+
+   ```json
+   {
+     "statusLine": {
+       "type": "command",
+       "command": "/Users/you/.claude/claude-gauge/capture"
+     }
+   }
+   ```
+
+3. Removes the earlier standalone Claude Gauge and Codex Gauge apps and their launch agents, if present.
+4. Turns on launch at login and starts the app.
+
+The installer fails closed for empty, unreadable, malformed, or foreign statusLine settings. It never rewrites them, and restores any previous Agent Gauge installation if setup fails.
+
+After installation, restart any existing Claude Code sessions (or start a new one) and send one message. Sessions already running during installation may not load the new statusLine command.
+
+If you use a menu bar manager such as Ice or Bartender, new items may start in its hidden section. Move them to the visible section there.
+
+## Uninstall
+
+To remove the app, its login item, and the exact user-level statusLine entry the installer added:
+
+```bash
+./script/uninstall.sh
+```
+
+The Claude helper and cache are intentionally preserved because project-local Claude settings can also reference them, and the uninstaller cannot safely discover every project. If any custom, foreign, malformed, or unreadable user statusLine remains, uninstall also fails closed. Symlink-managed user settings are updated through their resolved target without replacing the symlink. Remove or detach conflicting settings, then rerun.
+
+After checking that no user or project status line references the helper, you can explicitly purge the preserved files:
+
+```bash
+rm -rf ~/.claude/claude-gauge
+```
+
+## Architecture
+
+- `GaugeCore/` — shared usage models, display states, freshness, formatting, ring geometry, and the `UsageProvider` protocol
+- `ClaudeProvider/` — statusline JSON decoding, cache format and reader, capture logic, and settings mutation
+- `ClaudeGaugeCapture/` — fast stdin capture binary and statusLine install/uninstall commands
+- `CodexProvider/` — Codex executable resolution, local app-server transport, and decoding
+- `AgentGauge/App/` — menu bar scenes, provider visibility, and launch at login
+- `AgentGauge/Stores/` — per-provider refresh lifecycle and stale-data preservation
+- `AgentGauge/Support/` — per-provider descriptor and palette
+- `AgentGauge/Views/` — status label, popover, usage rings, data-age indicator, and settings menu
+
+Claude cache updates are serialized with a local file lock and use atomic replacement. Concurrent sessions reconcile by reset timestamp and used percentage so an older session cannot regress a newer window.

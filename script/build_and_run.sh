@@ -2,11 +2,11 @@
 set -euo pipefail
 
 MODE="${1:-run}"
-EXECUTABLE_NAME="ClaudeGauge"
-DISPLAY_NAME="Claude Gauge"
-BUNDLE_ID="com.joar.claudegauge"
+EXECUTABLE_NAME="AgentGauge"
+DISPLAY_NAME="Agent Gauge"
+BUNDLE_ID="com.joar.agentgauge"
 MIN_SYSTEM_VERSION="14.0"
-BUILD_CONFIGURATION="${CLAUDE_GAUGE_BUILD_CONFIGURATION:-debug}"
+BUILD_CONFIGURATION="${AGENT_GAUGE_BUILD_CONFIGURATION:-debug}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
@@ -46,7 +46,7 @@ cd "$ROOT_DIR"
 case "$BUILD_CONFIGURATION" in
   debug|release) ;;
   *)
-    echo "CLAUDE_GAUGE_BUILD_CONFIGURATION must be debug or release" >&2
+    echo "AGENT_GAUGE_BUILD_CONFIGURATION must be debug or release" >&2
     exit 2
     ;;
 esac

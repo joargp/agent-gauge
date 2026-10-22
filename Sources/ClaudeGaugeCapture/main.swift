@@ -1,6 +1,6 @@
 import Darwin
 import Foundation
-import ClaudeGaugeCore
+import ClaudeProvider
 
 // Modes:
 //   (no command)         read statusline JSON on stdin, update the usage
@@ -188,7 +188,7 @@ private func installStatusline(locations: CacheLocations) -> Int32 {
 private func uninstallStatusline(locations: CacheLocations) -> Int32 {
     do {
         let change = try StatuslineInstallation.uninstall(locations: locations)
-        print("Claude Gauge status line \(describe(change))")
+        print("Agent Gauge status line \(describe(change))")
         print("Helper and cache preserved for possible project-level references: \(locations.installDirectory.path)")
         return 0
     } catch {
