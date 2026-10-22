@@ -6,7 +6,12 @@ struct AgentGaugeApp: App {
 
     init() {
         LaunchAtLogin.handleCommandLine()
-        _model = StateObject(wrappedValue: AppModel())
+        let model = AppModel()
+        _model = StateObject(wrappedValue: model)
+        // Wait for the app to finish launching before opening a window.
+        DispatchQueue.main.async {
+            WelcomeWindowController.shared.showIfNeeded(model: model)
+        }
     }
 
     var body: some Scene {
@@ -27,10 +32,14 @@ struct AgentGaugeApp: App {
         .menuBarExtraStyle(.window)
     }
 
+    /// Only the app's own switches change visibility. AppKit also writes to
+    /// this binding when an item leaves the menu bar, which menu bar managers
+    /// such as Ice trigger while rearranging items, so those writes are
+    /// ignored.
     private func visibility(_ provider: GaugeProvider) -> Binding<Bool> {
         Binding(
             get: { model.isVisible(provider) },
-            set: { model.setVisible($0, for: provider) }
+            set: { _ in }
         )
     }
 }

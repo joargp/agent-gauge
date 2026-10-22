@@ -18,6 +18,15 @@ enum GaugeProvider: String, CaseIterable, Identifiable {
         }
     }
 
+    /// The agent's full name, where the popover header's short name is too
+    /// terse.
+    var productName: String {
+        switch self {
+        case .claude: "Claude Code"
+        case .codex: "Codex"
+        }
+    }
+
     var symbolName: String {
         switch self {
         case .claude: "sparkles"

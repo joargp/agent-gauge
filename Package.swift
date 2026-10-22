@@ -53,7 +53,7 @@ let package = Package(
         ),
         .testTarget(
             name: "AgentGaugeTests",
-            dependencies: ["AgentGauge", "GaugeCore"],
+            dependencies: ["AgentGauge", "GaugeCore", "ClaudeProvider", "CodexProvider"],
             path: "Tests/AgentGaugeTests"
         )
     ]

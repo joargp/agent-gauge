@@ -14,6 +14,8 @@ APP_BUNDLE="$DIST_DIR/$DISPLAY_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
+APP_HELPERS="$APP_CONTENTS/Helpers"
+CAPTURE_NAME="claude-gauge-capture"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 
 find_binary_pid() {
@@ -52,12 +54,18 @@ case "$BUILD_CONFIGURATION" in
 esac
 
 swift build --configuration "$BUILD_CONFIGURATION"
-BUILD_BINARY="$(swift build --configuration "$BUILD_CONFIGURATION" --show-bin-path)/$EXECUTABLE_NAME"
+BUILD_BIN_PATH="$(swift build --configuration "$BUILD_CONFIGURATION" --show-bin-path)"
+BUILD_BINARY="$BUILD_BIN_PATH/$EXECUTABLE_NAME"
 
 rm -rf "$APP_BUNDLE"
-mkdir -p "$APP_MACOS"
+mkdir -p "$APP_MACOS" "$APP_HELPERS"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
+
+# The welcome window's Connect button installs this helper as Claude Code's
+# status line.
+cp "$BUILD_BIN_PATH/$CAPTURE_NAME" "$APP_HELPERS/$CAPTURE_NAME"
+chmod +x "$APP_HELPERS/$CAPTURE_NAME"
 
 cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -91,6 +99,7 @@ cat >"$INFO_PLIST" <<PLIST
 PLIST
 
 plutil -lint "$INFO_PLIST" >/dev/null
+codesign --force --sign - "$APP_HELPERS/$CAPTURE_NAME" >/dev/null
 codesign --force --sign - "$APP_BUNDLE" >/dev/null
 
 open_app() {

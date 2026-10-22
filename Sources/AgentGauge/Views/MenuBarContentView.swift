@@ -160,6 +160,10 @@ struct MenuBarContentView: View {
 
             Divider()
 
+            Button("Welcome…") {
+                WelcomeWindowController.shared.show(model: model)
+            }
+
             Toggle("Launch at Login", isOn: Binding(
                 get: { model.launchesAtLogin },
                 set: { model.setLaunchesAtLogin($0) }

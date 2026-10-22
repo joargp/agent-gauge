@@ -72,6 +72,16 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.visibleProviders, Set(GaugeProvider.allCases))
     }
 
+    func testWelcomeCompletionPersists() {
+        let model = makeModel()
+        XCTAssertFalse(model.hasCompletedWelcome)
+
+        model.completeWelcome()
+
+        XCTAssertTrue(model.hasCompletedWelcome)
+        XCTAssertTrue(makeModel().hasCompletedWelcome)
+    }
+
     private func makeModel() -> AppModel {
         let snapshot = UsageSnapshot(
             fiveHourWindow: nil,

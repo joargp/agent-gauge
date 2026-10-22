@@ -75,6 +75,17 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// The welcome window opens by itself only until it has been shown once.
+    var hasCompletedWelcome: Bool {
+        defaults.bool(forKey: Self.welcomeCompletedKey)
+    }
+
+    func completeWelcome() {
+        defaults.set(true, forKey: Self.welcomeCompletedKey)
+    }
+
+    private static let welcomeCompletedKey = "welcome.completed"
+
     private static func visibilityKey(_ provider: GaugeProvider) -> String {
         "show.\(provider.rawValue)"
     }
