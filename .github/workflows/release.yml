@@ -3,11 +3,8 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # Run manually with `gh workflow run release.yml --ref <tag>`.
   workflow_dispatch:
-    inputs:
-      tag:
-        description: Release tag to build, for example v0.1.0
-        required: true
 
 permissions:
   contents: write
@@ -15,8 +12,10 @@ permissions:
 jobs:
   build:
     runs-on: macos-26
+    # The signing secrets live in this environment, which only v* tags may use.
+    environment: release
     env:
-      TAG: ${{ inputs.tag || github.ref_name }}
+      TAG: ${{ github.ref_name }}
       # Signing and notarization run only when these secrets are configured.
       MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
       MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
@@ -25,9 +24,13 @@ jobs:
       NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
       NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
     steps:
+      - name: Require a tag
+        if: github.ref_type != 'tag'
+        run: |
+          echo "Run this workflow on a release tag, for example: gh workflow run release.yml --ref v0.2.0" >&2
+          exit 1
+
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.TAG }}
 
       - run: swift test
 

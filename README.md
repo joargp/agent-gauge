@@ -19,7 +19,7 @@ Each [release](https://github.com/joargp/agent-gauge/releases) has a ready-made 
 1. Download and unzip it, then move **Agent Gauge** to your Applications folder.
 2. Open it. The welcome window lets you pick agents, connect Claude Code's status line, and turn on launch at login.
 
-Release builds are not notarized by Apple yet, so macOS blocks the first launch. Allow it in **System Settings → Privacy & Security → Open Anyway**, or run:
+Builds from 0.1.2 on are signed with a Developer ID and notarized by Apple, so they open normally. Older builds are blocked on first launch; allow them in **System Settings → Privacy & Security → Open Anyway**, or run:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/Agent Gauge.app"
@@ -169,7 +169,7 @@ To build the same universal, zipped app that releases ship:
 AGENT_GAUGE_VERSION=0.1.0 ./script/package_release.sh
 ```
 
-Pushing a `v*` tag runs the Release workflow, which tests, packages, and attaches the zip to that GitHub release. To sign with a Developer ID and notarize, add these repository secrets: `MACOS_CERTIFICATE_P12` (base64), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`, `NOTARY_KEY_P8` (base64), `NOTARY_KEY_ID` and `NOTARY_ISSUER_ID`. Without them the build is signed ad hoc.
+Pushing a `v*` tag runs the Release workflow, which tests, packages, and attaches the zip to that GitHub release. To sign with a Developer ID and notarize, add these secrets to a GitHub environment named `release` that only `v*` tags may use: `MACOS_CERTIFICATE_P12` (base64), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`, `NOTARY_KEY_P8` (base64), `NOTARY_KEY_ID` and `NOTARY_ISSUER_ID`. Without them the build is signed ad hoc.
 
 To verify the complete local Codex login and app-server path on this Mac:
 
