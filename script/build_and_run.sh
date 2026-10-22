@@ -74,6 +74,12 @@ mkdir -p "$APP_MACOS" "$APP_HELPERS"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
 
+# SwiftPM's default build system records the deployment target as the SDK
+# version. macOS then treats the app as built for macOS 14 and skips the
+# current system look, such as the larger menu bar window corners.
+vtool -set-build-version macos "$MIN_SYSTEM_VERSION" "$(xcrun --sdk macosx --show-sdk-version)" \
+  -replace -output "$APP_BINARY" "$APP_BINARY"
+
 # The welcome window's Connect button installs this helper as Claude Code's
 # status line.
 cp "$BUILD_BIN_PATH/$CAPTURE_NAME" "$APP_HELPERS/$CAPTURE_NAME"
