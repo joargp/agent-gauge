@@ -150,6 +150,14 @@ Other supported modes:
 ./script/build_and_run.sh --telemetry
 ```
 
+To build the same universal, zipped app that releases ship:
+
+```bash
+AGENT_GAUGE_VERSION=0.1.0 ./script/package_release.sh
+```
+
+Pushing a `v*` tag runs the Release workflow, which tests, packages, and attaches the zip to that GitHub release. To sign with a Developer ID and notarize, add these repository secrets: `MACOS_CERTIFICATE_P12` (base64), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`, `NOTARY_KEY_P8` (base64), `NOTARY_KEY_ID` and `NOTARY_ISSUER_ID`. Without them the build is signed ad hoc.
+
 To verify the complete local Codex login and app-server path on this Mac:
 
 ```bash
@@ -158,7 +166,20 @@ CODEX_GAUGE_LIVE_TEST=1 swift test --filter LiveCodexIntegrationTests
 
 This test reads only usage metadata and never prints tokens.
 
-## Install
+## Download
+
+Each [release](https://github.com/joargp/agent-gauge/releases) has a ready-made `AgentGauge-<version>.zip`, built by GitHub Actions for both Apple silicon and Intel Macs.
+
+1. Download and unzip it, then move **Agent Gauge** to your Applications folder.
+2. Open it. The welcome window lets you pick agents, connect Claude Code's status line, and turn on launch at login.
+
+Release builds are not notarized by Apple yet, so macOS blocks the first launch. Allow it in **System Settings → Privacy & Security → Open Anyway**, or run:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Agent Gauge.app"
+```
+
+## Install from source
 
 ```bash
 ./script/install.sh

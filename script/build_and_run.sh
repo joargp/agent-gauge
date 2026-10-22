@@ -7,6 +7,13 @@ DISPLAY_NAME="Agent Gauge"
 BUNDLE_ID="com.joar.agentgauge"
 MIN_SYSTEM_VERSION="14.0"
 BUILD_CONFIGURATION="${AGENT_GAUGE_BUILD_CONFIGURATION:-debug}"
+VERSION="${AGENT_GAUGE_VERSION:-0.1.0}"
+BUILD_NUMBER="${AGENT_GAUGE_BUILD_NUMBER:-1}"
+# Set AGENT_GAUGE_UNIVERSAL=1 to build for both Apple silicon and Intel.
+UNIVERSAL="${AGENT_GAUGE_UNIVERSAL:-0}"
+# "-" signs ad hoc. A Developer ID identity also enables the hardened runtime
+# that notarization requires.
+SIGN_IDENTITY="${AGENT_GAUGE_SIGN_IDENTITY:--}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
@@ -53,8 +60,13 @@ case "$BUILD_CONFIGURATION" in
     ;;
 esac
 
-swift build --configuration "$BUILD_CONFIGURATION"
-BUILD_BIN_PATH="$(swift build --configuration "$BUILD_CONFIGURATION" --show-bin-path)"
+BUILD_FLAGS=(--configuration "$BUILD_CONFIGURATION")
+if [[ "$UNIVERSAL" == "1" ]]; then
+  BUILD_FLAGS+=(--arch arm64 --arch x86_64)
+fi
+
+swift build "${BUILD_FLAGS[@]}"
+BUILD_BIN_PATH="$(swift build "${BUILD_FLAGS[@]}" --show-bin-path)"
 BUILD_BINARY="$BUILD_BIN_PATH/$EXECUTABLE_NAME"
 
 rm -rf "$APP_BUNDLE"
@@ -83,9 +95,9 @@ cat >"$INFO_PLIST" <<PLIST
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
+  <string>$VERSION</string>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>$BUILD_NUMBER</string>
   <key>LSMinimumSystemVersion</key>
   <string>$MIN_SYSTEM_VERSION</string>
   <key>LSUIElement</key>
@@ -99,8 +111,13 @@ cat >"$INFO_PLIST" <<PLIST
 PLIST
 
 plutil -lint "$INFO_PLIST" >/dev/null
-codesign --force --sign - "$APP_HELPERS/$CAPTURE_NAME" >/dev/null
-codesign --force --sign - "$APP_BUNDLE" >/dev/null
+SIGN_FLAGS=(--force --sign "$SIGN_IDENTITY")
+if [[ "$SIGN_IDENTITY" != "-" ]]; then
+  SIGN_FLAGS+=(--options runtime --timestamp)
+fi
+# Sign the nested helper before the bundle that contains it.
+codesign "${SIGN_FLAGS[@]}" "$APP_HELPERS/$CAPTURE_NAME" >/dev/null
+codesign "${SIGN_FLAGS[@]}" "$APP_BUNDLE" >/dev/null
 
 open_app() {
   /usr/bin/open -n "$APP_BUNDLE"
@@ -108,7 +125,7 @@ open_app() {
 
 case "$MODE" in
   --stage|stage)
-    echo "$DISPLAY_NAME staged at $APP_BUNDLE ($BUILD_CONFIGURATION)"
+    echo "$DISPLAY_NAME $VERSION staged at $APP_BUNDLE ($BUILD_CONFIGURATION)"
     ;;
   run)
     open_app
