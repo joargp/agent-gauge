@@ -215,3 +215,9 @@ rm -rf ~/.claude/claude-gauge
 - `AgentGauge/Views/` — status label, popover, usage rings, data-age indicator, and settings menu
 
 Claude cache updates are serialized with a local file lock and use atomic replacement. Concurrent sessions reconcile by reset timestamp and used percentage so an older session cannot regress a newer window.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+Agent Gauge is an independent project, not affiliated with Anthropic or OpenAI.
