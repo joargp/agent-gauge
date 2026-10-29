@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Agent Gauge</title>
+<meta name="description" content="A small, free Mac app that shows how much of your Claude Code and Codex limits is left, and when they reset.">
+<meta property="og:title" content="Agent Gauge">
+<meta property="og:description" content="A small, free Mac app that shows how much of your Claude Code and Codex limits is left, and when they reset.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://joargp.github.io/agent-gauge/">
+<meta property="og:image" content="https://raw.githubusercontent.com/joargp/agent-gauge/main/docs/popovers.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='7' fill='none' stroke='%230A84FF' stroke-width='2.4'/%3E%3Ccircle cx='9' cy='9' r='3.6' fill='none' stroke='%23D97857' stroke-width='2.4'/%3E%3C/svg%3E">
+<style>
+body{margin:0;background:#111113}
+a{color:#7CB6FF}a:hover{color:#A9CEFF}
+summary{cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+</style>
+</head>
+<body>
+<div style="min-height: 100vh; background: #111113; color: #EDEDF0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif; font-size: 16px; line-height: 1.6">
+
+<div style="max-width: 760px; margin: 0 auto; padding: 32px 24px 64px; display: flex; flex-direction: column; gap: 72px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; font-size: 15px">
+<a href="#top" style="display: flex; align-items: center; gap: 10px; margin-right: auto; color: #EDEDF0; text-decoration: none; font-weight: 600">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 18 18">
+<circle cx="9" cy="9" r="7" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="2"></circle>
+<circle cx="9" cy="9" r="7" fill="none" stroke="#0A84FF" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="72 100" transform="rotate(-90 9 9)"></circle>
+<circle cx="9" cy="9" r="3.8" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="2"></circle>
+<circle cx="9" cy="9" r="3.8" fill="none" stroke="#D97857" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="55 100" transform="rotate(-90 9 9)"></circle>
+</svg>
+Agent Gauge
+</a>
+<a href="https://github.com/joargp/agent-gauge" style="color: #A1A1A8">Source</a>
+<a href="https://github.com/joargp/agent-gauge/releases" style="color: #A1A1A8">Releases</a>
+<a href="https://github.com/joargp/agent-gauge/issues" style="color: #A1A1A8">Issues</a>
+</header>
+
+<main id="top" style="display: flex; flex-direction: column; gap: 72px">
+
+<section style="display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h1 style="margin: 0; font-size: 34px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance">Agent Gauge</h1>
+<p style="margin: 0; max-width: 36rem; font-size: 19px; line-height: 1.55; color: #C9C9CF">A small, free Mac app that shows how much of your Claude Code and Codex limits is left, and when they reset. It lives in the menu bar and doesn’t need an account.</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px">
+<a href="https://github.com/joargp/agent-gauge/releases/latest" style="display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 18px; border-radius: 10px; background: #EDEDF0; color: #111113; text-decoration: none; font-weight: 600; font-size: 15px">
+<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M5 20h14"></path></svg>
+Download 0.1.3
+</a>
+<span style="font-size: 14px; color: #8E8E95">Zip, 0.9 MB · macOS 14 or later · Apple silicon and Intel · Signed and notarized · MIT license</span>
+</div>
+</section>
+
+<figure style="margin: 0; display: flex; flex-direction: column; gap: 14px">
+<div role="img" aria-label="macOS menu bar with the Claude and Codex gauges" style="display: flex; align-items: center; justify-content: flex-end; gap: 18px; height: 36px; padding: 0 16px; border-radius: 10px; background: #000000; border: 1px solid rgba(255,255,255,0.08)">
+<svg aria-hidden="true" width="19" height="19" viewBox="0 0 18 18">
+<circle cx="9" cy="9" r="7" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="2"></circle>
+<circle cx="9" cy="9" r="7" fill="none" stroke="#FFD60A" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="39 100" transform="rotate(-90 9 9)"></circle>
+<circle cx="9" cy="9" r="3.8" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="2"></circle>
+<circle cx="9" cy="9" r="3.8" fill="none" stroke="#D97857" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="96 100" transform="rotate(-90 9 9)"></circle>
+</svg>
+<svg aria-hidden="true" width="19" height="19" viewBox="0 0 18 18">
+<circle cx="9" cy="9" r="7" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="2"></circle>
+<circle cx="9" cy="9" r="7" fill="none" stroke="#0A84FF" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="63 100" transform="rotate(-90 9 9)"></circle>
+<circle cx="9" cy="9" r="3.8" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="2"></circle>
+<circle cx="9" cy="9" r="3.8" fill="none" stroke="#30D158" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="81 100" transform="rotate(-90 9 9)"></circle>
+</svg>
+<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#E5E5EA" stroke-width="2" stroke-linecap="round"><path d="M2 8.8a15 15 0 0 1 20 0"></path><path d="M5.5 12.4a10 10 0 0 1 13 0"></path><path d="M9 16a5 5 0 0 1 6 0"></path><circle cx="12" cy="19.5" r="0.6" fill="#E5E5EA"></circle></svg>
+<svg aria-hidden="true" width="25" height="13" viewBox="0 0 26 14" fill="none"><rect x="0.75" y="0.75" width="21.5" height="12.5" rx="3.5" stroke="#E5E5EA" stroke-width="1.5"></rect><rect x="3" y="3" width="14" height="8" rx="1.5" fill="#E5E5EA"></rect><path d="M24 5v4" stroke="#E5E5EA" stroke-width="1.5" stroke-linecap="round"></path></svg>
+<span style="font-size: 13px; font-weight: 500; color: #E5E5EA; white-space: pre">Wed Oct 28  20:52</span>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px">
+
+<div role="img" aria-label="Claude popover: 96% of the 5-hour limit and 39% of the weekly limit left" style="box-sizing: border-box; padding: 18px; border-radius: 18px; background: #232327; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 18px 44px rgba(0,0,0,0.45); display: flex; flex-direction: column; gap: 14px; font-size: 12px">
+<div style="display: flex; align-items: center; gap: 8px">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97857" stroke-width="1.8" stroke-linejoin="round"><path d="M10 3l1.6 4.6L16 9.2l-4.4 1.6L10 15.4l-1.6-4.6L4 9.2l4.4-1.6z"></path><path d="M17.5 13.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"></path></svg>
+<div style="flex-grow: 1; min-width: 0; line-height: 1.25; white-space: nowrap"><div style="font-size: 14px; font-weight: 600">Claude</div><div style="color: #A1A1A8; overflow: hidden; text-overflow: ellipsis">Subscription usage</div></div>
+<span style="flex-shrink: 0; padding: 3px 8px; border-radius: 999px; background: #3A3A3E; font-size: 10.5px; font-weight: 700; white-space: nowrap">Claude Code 2.1.312</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; text-align: center">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+<div style="position: relative; width: 88px; height: 88px">
+<svg aria-hidden="true" width="88" height="88" viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="10"></circle><circle cx="60" cy="60" r="52" fill="none" stroke="#D97857" stroke-width="10" stroke-linecap="round" pathLength="100" stroke-dasharray="96 100" transform="rotate(-90 60 60)"></circle></svg>
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1"><span style="font-size: 20px; font-weight: 600">96%</span><span style="font-size: 10px; color: #A1A1A8">left</span></div>
+</div>
+<div style="font-weight: 600">5 hours</div>
+<div style="font-size: 10.5px; color: #A1A1A8; line-height: 1.4">Resets in 2h 27m<br><span style="color: #8E8E95">Oct 28 at 23:20</span></div>
+</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+<div style="position: relative; width: 88px; height: 88px">
+<svg aria-hidden="true" width="88" height="88" viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="10"></circle><circle cx="60" cy="60" r="52" fill="none" stroke="#FFD60A" stroke-width="10" stroke-linecap="round" pathLength="100" stroke-dasharray="39 100" transform="rotate(-90 60 60)"></circle></svg>
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1"><span style="font-size: 20px; font-weight: 600">39%</span><span style="font-size: 10px; color: #A1A1A8">left</span></div>
+</div>
+<div style="font-weight: 600">Weekly</div>
+<div style="font-size: 10.5px; color: #A1A1A8; line-height: 1.4">Resets in 23h 7m<br><span style="color: #8E8E95">Oct 29 at 20:00</span></div>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 6px; color: #C9C9CF"><span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 4px; background: #30D158"></span>Updated just now</div>
+</div>
+
+<div role="img" aria-label="Codex popover: 81% of the 5-hour limit and 63% of the weekly limit left" style="box-sizing: border-box; padding: 18px; border-radius: 18px; background: #232327; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 18px 44px rgba(0,0,0,0.45); display: flex; flex-direction: column; gap: 14px; font-size: 12px">
+<div style="display: flex; align-items: center; gap: 8px">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A84FF" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="8.5"></circle><path d="M12 13l4-4"></path><path d="M7.5 13h1M15.5 13h1M12 8.5v1"></path></svg>
+<div style="flex-grow: 1; min-width: 0; line-height: 1.25; white-space: nowrap"><div style="font-size: 14px; font-weight: 600">Codex</div><div style="color: #A1A1A8; overflow: hidden; text-overflow: ellipsis">Subscription usage</div></div>
+<span style="flex-shrink: 0; padding: 3px 8px; border-radius: 999px; background: #3A3A3E; font-size: 10.5px; font-weight: 700; white-space: nowrap">Plus</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; text-align: center">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+<div style="position: relative; width: 88px; height: 88px">
+<svg aria-hidden="true" width="88" height="88" viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="10"></circle><circle cx="60" cy="60" r="52" fill="none" stroke="#30D158" stroke-width="10" stroke-linecap="round" pathLength="100" stroke-dasharray="81 100" transform="rotate(-90 60 60)"></circle></svg>
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1"><span style="font-size: 20px; font-weight: 600">81%</span><span style="font-size: 10px; color: #A1A1A8">left</span></div>
+</div>
+<div style="font-weight: 600">5 hours</div>
+<div style="font-size: 10.5px; color: #A1A1A8; line-height: 1.4">Resets in 3h 12m<br><span style="color: #8E8E95">Oct 29 at 00:04</span></div>
+</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+<div style="position: relative; width: 88px; height: 88px">
+<svg aria-hidden="true" width="88" height="88" viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="10"></circle><circle cx="60" cy="60" r="52" fill="none" stroke="#0A84FF" stroke-width="10" stroke-linecap="round" pathLength="100" stroke-dasharray="63 100" transform="rotate(-90 60 60)"></circle></svg>
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1"><span style="font-size: 20px; font-weight: 600">63%</span><span style="font-size: 10px; color: #A1A1A8">left</span></div>
+</div>
+<div style="font-weight: 600">Weekly</div>
+<div style="font-size: 10.5px; color: #A1A1A8; line-height: 1.4">Resets in 4d 6h<br><span style="color: #8E8E95">Nov 2 at 03:00</span></div>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 6px; color: #C9C9CF"><span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 4px; background: #30D158"></span>Updated just now</div>
+</div>
+
+</div>
+<figcaption style="font-size: 14px; color: #8E8E95">One menu bar icon per agent. Click it for exact numbers and reset times.</figcaption>
+</figure>
+
+<section id="what" style="display: flex; flex-direction: column; gap: 20px">
+<h2 style="margin: 0; font-size: 22px; line-height: 1.3; font-weight: 600">Reading the icon</h2>
+<dl style="margin: 0; display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; gap: 20px; align-items: flex-start">
+<svg aria-hidden="true" width="44" height="44" viewBox="0 0 18 18" style="flex-shrink: 0">
+<circle cx="9" cy="9" r="7" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="1.6"></circle>
+<circle cx="9" cy="9" r="7" fill="none" stroke="#FFD60A" stroke-width="1.6" stroke-linecap="round" pathLength="100" stroke-dasharray="39 100" transform="rotate(-90 9 9)"></circle>
+<circle cx="9" cy="9" r="3.8" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="1.6"></circle>
+<circle cx="9" cy="9" r="3.8" fill="none" stroke="#D97857" stroke-width="1.6" stroke-linecap="round" pathLength="100" stroke-dasharray="96 100" transform="rotate(-90 9 9)"></circle>
+</svg>
+<div style="min-width: 0"><dt style="font-weight: 600">Two rings</dt><dd style="margin: 2px 0 0; color: #A1A1A8">The outer ring is the weekly limit, the inner ring the 5-hour window. Each one shows what’s left, not what’s used.</dd></div>
+</div>
+<div style="display: flex; gap: 20px; align-items: flex-start">
+<div aria-hidden="true" style="width: 44px; flex-shrink: 0; display: flex; gap: 4px; padding-top: 8px">
+<span style="width: 12px; height: 12px; border-radius: 6px; background: #0A84FF"></span>
+<span style="width: 12px; height: 12px; border-radius: 6px; background: #FF9F0A"></span>
+<span style="width: 12px; height: 12px; border-radius: 6px; background: #FF453A"></span>
+</div>
+<div style="min-width: 0"><dt style="font-weight: 600">Color</dt><dd style="margin: 2px 0 0; color: #A1A1A8">A ring keeps its agent’s color until less than 25% is left. Then it turns orange, and red under 10%.</dd></div>
+</div>
+<div style="display: flex; gap: 20px; align-items: flex-start">
+<div aria-hidden="true" style="width: 44px; flex-shrink: 0; display: flex; gap: 4px; padding-top: 10px">
+<span style="width: 8px; height: 8px; border-radius: 4px; background: #30D158"></span>
+<span style="width: 8px; height: 8px; border-radius: 4px; background: #8E8E95"></span>
+<span style="width: 8px; height: 8px; border-radius: 4px; background: #FF9F0A"></span>
+</div>
+<div style="min-width: 0"><dt style="font-weight: 600">Age of the reading</dt><dd style="margin: 2px 0 0; color: #A1A1A8">Claude Code only reports usage while a session is running, so the popover always says how old the numbers are. After a window resets, the old number is cleared.</dd></div>
+</div>
+</dl>
+<p style="margin: 0; color: #A1A1A8">Use only Claude Code, only Codex, or both. You can switch either off from the gear menu, and a hidden agent does no background work.</p>
+</section>
+
+<section id="privacy" style="display: flex; flex-direction: column; gap: 20px">
+<h2 style="margin: 0; font-size: 22px; line-height: 1.3; font-weight: 600">Where the numbers come from</h2>
+<p style="margin: 0; color: #C9C9CF">Agent Gauge never asks you to sign in and never stores a token. It reads usage the way each agent already reports it on your Mac.</p>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px 32px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<h3 style="margin: 0; font-size: 16px; font-weight: 600">Claude Code</h3>
+<ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: #A1A1A8">
+<li>Claude Code passes rate-limit data to its status line. A small helper saves only the percentages and reset times to a local file.</li>
+<li>No Keychain access, no tokens, no network requests.</li>
+</ul>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<h3 style="margin: 0; font-size: 16px; font-weight: 600">Codex</h3>
+<ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: #A1A1A8">
+<li>Asks your installed Codex CLI for its rate limits once a minute, over a local connection.</li>
+<li>Your login stays with Codex. Agent Gauge never sees a token.</li>
+</ul>
+</div>
+</div>
+<p style="margin: 0; color: #A1A1A8">Prompts, transcripts and code are never read. The source is short enough to check yourself.</p>
+</section>
+
+<section id="install" style="display: flex; flex-direction: column; gap: 20px">
+<h2 style="margin: 0; font-size: 22px; line-height: 1.3; font-weight: 600">Install</h2>
+<ol style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; color: #C9C9CF">
+<li><a href="https://github.com/joargp/agent-gauge/releases/latest">Download the zip</a> and unzip it.</li>
+<li>Move <strong style="font-weight: 600; color: #EDEDF0">Agent Gauge</strong> to your Applications folder.</li>
+<li>Open it. The welcome window lets you pick your agents and connect Claude Code.</li>
+</ol>
+<p style="margin: 0; color: #A1A1A8">You need macOS 14 or later, and Claude Code on a Pro or Max plan, Codex on a ChatGPT plan, or both.</p>
+<h3 style="margin: 8px 0 0; font-size: 16px; font-weight: 600">Build from source</h3>
+<div style="border-radius: 12px; background: #19191C; border: 1px solid rgba(255,255,255,0.09); overflow: hidden">
+<div style="display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 16px; border-bottom: 1px solid rgba(255,255,255,0.07)">
+<span style="flex-grow: 1; font-size: 13px; color: #8E8E95">Needs the Xcode command-line tools</span>
+<button type="button" id="copy-install" style="height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: #26262A; color: #EDEDF0; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer">Copy</button>
+</div>
+<pre style="margin: 0; padding: 16px; overflow-x: auto; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 14px; line-height: 1.8; color: #E5E5EA"><code><span style="color: #8E8E95">$ </span>git clone https://github.com/joargp/agent-gauge.git
+<span style="color: #8E8E95">$ </span>cd agent-gauge
+<span style="color: #8E8E95">$ </span>./script/install.sh</code></pre>
+</div>
+<p style="margin: 0; color: #A1A1A8">The script builds the app into <code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 14px; color: #E5E5EA">~/Applications</code>, connects Claude Code’s status line (it leaves an existing one alone) and starts Agent Gauge. <code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 14px; color: #E5E5EA">./script/uninstall.sh</code> removes it again.</p>
+</section>
+
+<section id="changes" style="display: flex; flex-direction: column; gap: 20px">
+<h2 style="margin: 0; font-size: 22px; line-height: 1.3; font-weight: 600">Recent changes</h2>
+<dl style="margin: 0; display: flex; flex-direction: column; gap: 14px">
+<div style="display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 16px">
+<dt style="font-variant-numeric: tabular-nums"><span style="font-weight: 600">0.1.3</span> <span style="font-size: 13px; color: #8E8E95">Oct 28</span></dt>
+<dd style="margin: 0; color: #A1A1A8">The popover has the standard macOS 26 corners and glass background again.</dd>
+</div>
+<div style="display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 16px">
+<dt style="font-variant-numeric: tabular-nums"><span style="font-weight: 600">0.1.2</span> <span style="font-size: 13px; color: #8E8E95">Oct 22</span></dt>
+<dd style="margin: 0; color: #A1A1A8">Signed and notarized by Apple, so it opens like any other downloaded app.</dd>
+</div>
+<div style="display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 16px">
+<dt style="font-variant-numeric: tabular-nums"><span style="font-weight: 600">0.1.1</span> <span style="font-size: 13px; color: #8E8E95">Oct 22</span></dt>
+<dd style="margin: 0; color: #A1A1A8">First downloadable build, for Apple silicon and Intel.</dd>
+</div>
+<div style="display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 16px">
+<dt style="font-variant-numeric: tabular-nums"><span style="font-weight: 600">0.1.0</span> <span style="font-size: 13px; color: #8E8E95">Oct 22</span></dt>
+<dd style="margin: 0; color: #A1A1A8">First release.</dd>
+</div>
+</dl>
+<a href="https://github.com/joargp/agent-gauge/releases" style="align-self: flex-start; font-size: 15px">All releases on GitHub</a>
+</section>
+
+<section id="faq" style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0 0 8px; font-size: 22px; line-height: 1.3; font-weight: 600">Questions</h2>
+<div style="display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,0.09)">
+<details style="padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.09)">
+<summary style="font-weight: 600">I don’t see the icons in my menu bar.</summary>
+<p style="margin: 10px 0 0; color: #A1A1A8">A full menu bar, or a menu bar manager like Ice or Bartender, can hide new items. Move Agent Gauge to the visible section there.</p>
+</details>
+<details style="padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.09)">
+<summary style="font-weight: 600">Why is my Claude reading old?</summary>
+<p style="margin: 10px 0 0; color: #A1A1A8">Claude Code only reports usage while a session is open. Usage can’t grow while it’s idle, so the last reading still holds. Start a session and send a message to refresh it.</p>
+</details>
+<details style="padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.09)">
+<summary style="font-weight: 600">Why does my Codex 5-hour ring say “No limit on this plan”?</summary>
+<p style="margin: 10px 0 0; color: #A1A1A8">Some ChatGPT plans only have a weekly Codex limit. Agent Gauge shows exactly the windows Codex reports.</p>
+</details>
+<details style="padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.09)">
+<summary style="font-weight: 600">I already have a custom Claude status line.</summary>
+<p style="margin: 10px 0 0; color: #A1A1A8">Agent Gauge leaves it alone. Add one <code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 14px; color: #E5E5EA">tee</code> to your command to feed Agent Gauge too. <a href="https://github.com/joargp/agent-gauge/blob/main/docs/details.md#existing-custom-status-line">Here’s how</a>.</p>
+</details>
+<details style="padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.09)">
+<summary style="font-weight: 600">Does it work with API keys or other agents?</summary>
+<p style="margin: 10px 0 0; color: #A1A1A8">Not yet. It reads subscription limits for Claude Code and Codex. Each agent is a small provider in the code, so pull requests for another one are welcome.</p>
+</details>
+</div>
+</section>
+
+</main>
+
+<footer style="display: flex; flex-direction: column; gap: 8px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.09); font-size: 14px; color: #8E8E95">
+<p style="margin: 0">Agent Gauge is made by Joar G.P. and is free under the <a href="https://github.com/joargp/agent-gauge/blob/main/LICENSE">MIT license</a>. Found a bug or have an idea? <a href="https://github.com/joargp/agent-gauge/issues">Open an issue</a>.</p>
+<p style="margin: 0">An independent project, not affiliated with Anthropic or OpenAI. Claude, Claude Code, ChatGPT and Codex are trademarks of their owners.</p>
+</footer>
+
+</div>
+</div>
+<script>
+const copyButton = document.getElementById("copy-install");
+const command = "git clone https://github.com/joargp/agent-gauge.git\ncd agent-gauge\n./script/install.sh";
+copyButton.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(command);
+    copyButton.textContent = "Copied";
+  } catch {
+    copyButton.textContent = "Copy failed";
+  }
+  setTimeout(() => { copyButton.textContent = "Copy"; }, 2000);
+});
+</script>
+</body>
+</html>

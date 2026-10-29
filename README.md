@@ -2,8 +2,10 @@
 
 How much of your Claude Code and Codex limits is left, right in your Mac's menu bar.
 
+**Website:** [joargp.github.io/agent-gauge](https://joargp.github.io/agent-gauge/)
+
 <p align="center">
-  <img src="docs/popovers.png" width="720" alt="Agent Gauge popovers: Claude with 15% of its 5-hour limit and 45% of its weekly limit left, Codex with 83% of its weekly limit left">
+  <img src="docs/popovers.png" width="720" alt="Agent Gauge popovers: Claude with 90% of its 5-hour limit and 35% of its weekly limit left, Codex with no 5-hour limit on its plan and 47% of its weekly limit left">
 </p>
 
 Each agent gets a small menu bar icon with two rings: the outer ring is the weekly limit, the inner ring the 5-hour window. Rings turn orange under 25% and red under 10%. Click one for exact numbers and reset times.
