@@ -124,7 +124,7 @@ public struct CodexAppServerClient: UsageProvider {
                 if !process.isRunning {
                     throw CodexUsageError.serverExited(process.terminationStatus)
                 }
-                continue
+                throw CodexUsageError.invalidResponse
             }
 
             for line in lineBuffer.append(chunk) {
