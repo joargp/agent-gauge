@@ -198,17 +198,6 @@ AGENT_GAUGE_VERSION=0.1.0 ./script/package_release.sh
 
 The build number (`CFBundleVersion`) comes from the version: 0.2.0 is 2000 and 1.4.12 is 1004012, so it always rises with the version. Versions must look like `1.2.3`.
 
-Pushing a `v1.2.3` tag runs the Release workflow, which tests, packages, and attaches the zip to that GitHub release. To sign with a Developer ID and notarize, add these secrets to a GitHub environment named `release` that only `v*` tags may use: `MACOS_CERTIFICATE_P12` (base64), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`, `NOTARY_KEY_P8` (base64), `NOTARY_KEY_ID` and `NOTARY_ISSUER_ID`. Without them the build is signed ad hoc.
-
-For built-in updates, the same environment also needs the variable `SPARKLE_PUBLIC_KEY` and the secret `SPARKLE_PRIVATE_KEY`, from Sparkle's `generate_keys` (in `.build/artifacts/sparkle/Sparkle/bin/` after `swift build`). When everything is set, the workflow then:
-
-1. downloads the zip from the release and checks its version, update key, signature and notarization;
-2. signs that exact file with `sign_update`;
-3. adds it to `site/appcast.xml` on `main` with `script/update_appcast.py`, using the release notes' bullet points as the in-app "What's new" list;
-4. starts the Pages workflow to publish the feed.
-
-A zip that is already on a release is never replaced, because installed apps check it against the signature in the feed. To publish a new build for the same version, delete the asset first. If anything is missing, the release is still created but isn't added to the feed. Builds without `AGENT_GAUGE_SPARKLE_PUBLIC_KEY`, including every local build, have no updater and show no update controls.
-
 To verify the complete local Codex login and app-server path on this Mac:
 
 ```bash
@@ -216,6 +205,51 @@ CODEX_GAUGE_LIVE_TEST=1 swift test --filter LiveCodexIntegrationTests
 ```
 
 This test reads only usage metadata and never prints tokens.
+
+## Releasing
+
+1. Commit to `main`, push, and wait for CI to pass.
+2. Write the release notes as short bullet points in a file. The app's "What's new" shows the first three, so put the ones that matter most first and keep each to one line. GitHub shows them all.
+
+   ```markdown
+   * A new app icon and a drag-to-install disk image.
+   * Offers to move itself to Applications, so updates keep working.
+   * The Fable limit refreshes when you open the Claude popover.
+   ```
+
+3. Run the release script with the new version and the notes:
+
+   ```bash
+   ./script/release.sh 0.1.7 notes.md
+   ```
+
+   It checks that you're on a clean `main` that matches GitHub, that CI passed for that commit and that the tag is new. It then shows the notes, asks you to confirm, and creates the GitHub release. Creating the release also creates the `v0.1.7` tag, which starts the Release workflow. The script prints the link to the run.
+
+   Without the script, this is the same:
+
+   ```bash
+   gh release create v0.1.7 --target "$(git rev-parse HEAD)" --title "Agent Gauge 0.1.7" --notes-file notes.md
+   ```
+
+   `--target` needs the full commit hash; GitHub rejects short ones. Pushing a bare `v0.1.7` tag also works, but the release then gets GitHub's generated notes. You commit straight to `main`, so those contain only a changelog link, and "What's new" is empty.
+
+4. Wait for the workflow, usually 10 to 30 minutes. Most of that is Apple notarizing the app and then the disk image. When it finishes, the release has `AgentGauge.dmg` and `AgentGauge-0.1.7.zip`, and the update feed lists the new version. Installed copies pick it up at their next daily check, or straight away with **Check for Updates…**.
+5. Update `site/index.html`: the download button's version, the disk image size, and a line under Recent changes. Pushing it redeploys the site.
+
+The website's download links point at `releases/latest/download/AgentGauge.dmg`, so they always get the newest disk image.
+
+### Release setup
+
+The Release workflow runs for `v1.2.3` tags. It tests, builds, notarizes, and attaches the disk image and zip to that GitHub release. To sign with a Developer ID and notarize, add these secrets to a GitHub environment named `release` that only `v*` tags may use: `MACOS_CERTIFICATE_P12` (base64), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`, `NOTARY_KEY_P8` (base64), `NOTARY_KEY_ID` and `NOTARY_ISSUER_ID`. Without them the build is signed ad hoc.
+
+For built-in updates, the same environment also needs the variable `SPARKLE_PUBLIC_KEY` and the secret `SPARKLE_PRIVATE_KEY`, from Sparkle's `generate_keys` (in `.build/artifacts/sparkle/Sparkle/bin/` after `swift build`). When everything is set, the workflow then:
+
+1. downloads the zip from the release and checks its version, update key, signature and notarization;
+2. signs that exact file with `sign_update`;
+3. adds it to `site/appcast.xml` on `main` with `script/update_appcast.py`, using the first three bullet points of the release notes as the in-app "What's new" list;
+4. starts the Pages workflow to publish the feed.
+
+A zip that is already on a release is never replaced, because installed apps check it against the signature in the feed. To publish a new build for the same version, delete the asset first. If anything is missing, the release is still created but isn't added to the feed. Builds without `AGENT_GAUGE_SPARKLE_PUBLIC_KEY`, including every local build, have no updater and show no update controls.
 
 ## Install from source
 

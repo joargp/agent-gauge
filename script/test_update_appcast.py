@@ -80,6 +80,13 @@ class UpdateAppcastTests(unittest.TestCase):
         self.assertNotIn("@someone", description)
         self.assertNotIn("Full Changelog", description)
 
+    def test_keeps_only_the_first_three_notes(self):
+        self.publish(2000, notes="* One\n* Two\n* Three\n* Four\n* Five\n")
+        description = self.items()[0].findtext("description")
+        self.assertIn("<li>Three</li>", description)
+        self.assertNotIn("Four", description)
+        self.assertEqual(description.count("<li>"), 3)
+
     def test_rejects_prereleases(self):
         result = self.publish(2000, version="0.2.0-beta", check=False)
         self.assertNotEqual(result.returncode, 0)

@@ -12,7 +12,8 @@ Modelled on Ghostty's dist/macos/update_appcast_tag.py.
 APPCAST is created when missing. An existing item with the same build number
 is replaced, and only the KEEP highest build numbers are kept. --signature is the output
 of Sparkle's sign_update for the exact file at --url. --notes is the GitHub
-release body; its bullet points become the "What's new" list in the app.
+release body; its first MAX_NOTES bullet points become the "What's new" list
+in the app.
 """
 
 import argparse
@@ -26,6 +27,8 @@ from email.utils import format_datetime
 
 SPARKLE_NS = "http://www.andymatuschak.org/xml-namespaces/sparkle"
 KEEP = 15
+# The app shows these in a small popover row; the full notes stay on GitHub.
+MAX_NOTES = 3
 MINIMUM_SYSTEM_VERSION = "14.0"
 
 
@@ -62,7 +65,7 @@ def bullet_points(markdown):
         text = re.sub(r"[`*_]", "", text)
         if text:
             points.append(text)
-    return points
+    return points[:MAX_NOTES]
 
 
 def description(version, notes, release_page):
