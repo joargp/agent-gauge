@@ -10,7 +10,7 @@ Modelled on Ghostty's dist/macos/update_appcast_tag.py.
         [--notes NOTES.md]
 
 APPCAST is created when missing. An existing item with the same build number
-is replaced, and only the newest KEEP items are kept. --signature is the output
+is replaced, and only the KEEP highest build numbers are kept. --signature is the output
 of Sparkle's sign_update for the exact file at --url. --notes is the GitHub
 release body; its bullet points become the "What's new" list in the app.
 """
@@ -22,7 +22,7 @@ import shlex
 import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
-from email.utils import format_datetime, parsedate_to_datetime
+from email.utils import format_datetime
 
 SPARKLE_NS = "http://www.andymatuschak.org/xml-namespaces/sparkle"
 KEEP = 15
@@ -82,11 +82,13 @@ def new_appcast():
     return ET.ElementTree(rss)
 
 
-def pub_date(item):
+def build_number(item):
+    """Sparkle orders updates by build number, so pruning must too. Items
+    without a readable one sort first and are pruned first."""
     try:
-        return parsedate_to_datetime(item.findtext("pubDate"))
+        return int(item.findtext(sparkle("version")))
     except (TypeError, ValueError):
-        return datetime.min.replace(tzinfo=timezone.utc)
+        return -1
 
 
 def main():
@@ -135,7 +137,9 @@ def main():
     for key, value in parse_signature(args.signature).items():
         enclosure.set(key, value)
 
-    items = sorted(channel.findall("item"), key=pub_date)
+    # Keep the highest builds, not the latest published: republishing an older
+    # release must never push the newest one out of the feed.
+    items = sorted(channel.findall("item"), key=build_number)
     for old in items[:-KEEP]:
         channel.remove(old)
 

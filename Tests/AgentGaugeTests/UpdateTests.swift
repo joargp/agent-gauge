@@ -41,6 +41,33 @@ final class UpdateStateTests: XCTestCase {
         XCTAssertFalse(UpdateState.downloading(offer, received: 0, expected: nil, cancel: {}).allowsManualCheck)
     }
 
+    func testFailedUpdateCycleClearsAReadyUpdate() {
+        // A background install that fails leaves a dead install handler behind;
+        // keeping "ready" would also block manual checks for good.
+        let cleared = UpdateState.ready(offer, install: {}).afterFailedUpdateCycle()
+        guard case .idle = cleared else { return XCTFail("Expected idle, got \(cleared)") }
+        XCTAssertTrue(cleared.allowsManualCheck)
+
+        for state in [
+            UpdateState.installing(offer),
+            .checking(cancel: {}),
+            .available(offer, reply: { _ in }),
+            .downloading(offer, received: 1, expected: 2, cancel: {}),
+            .extracting(offer),
+        ] {
+            guard case .idle = state.afterFailedUpdateCycle() else { return XCTFail("\(state) wasn't cleared") }
+        }
+    }
+
+    func testFailedUpdateCycleKeepsMessagesAlreadyShown() {
+        guard case .error = UpdateState.error(title: "t", message: "m", retry: {}).afterFailedUpdateCycle() else {
+            return XCTFail("An error on screen should stay")
+        }
+        guard case .upToDate = UpdateState.upToDate.afterFailedUpdateCycle() else {
+            return XCTFail("Up to date should stay")
+        }
+    }
+
     func testDownloadFraction() {
         XCTAssertNil(UpdateState.downloading(offer, received: 5, expected: nil, cancel: {}).downloadFraction)
         XCTAssertEqual(UpdateState.downloading(offer, received: 25, expected: 100, cancel: {}).downloadFraction, 0.25)

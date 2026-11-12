@@ -81,6 +81,18 @@ enum UpdateState {
         }
     }
 
+    /// What to show once Sparkle ends an update session with an error it didn't
+    /// report to the driver, such as a background install that failed after
+    /// downloading. Errors already on screen stay; anything waiting on that
+    /// session, including a ready update whose install handler is now dead,
+    /// is cleared so the next check can start.
+    func afterFailedUpdateCycle() -> UpdateState {
+        switch self {
+        case .idle, .upToDate, .error: self
+        case .checking, .available, .downloading, .extracting, .ready, .installing: .idle
+        }
+    }
+
     var downloadFraction: Double? {
         guard case let .downloading(_, received, expected?, _) = self, expected > 0 else { return nil }
         return min(1, Double(received) / Double(expected))

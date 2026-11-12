@@ -159,6 +159,19 @@ private final class UpdateDriver: NSObject, SPUUserDriver, SPUUpdaterDelegate {
         return true
     }
 
+    /// Sparkle's background driver can fail after downloading (for example
+    /// when the installer can't start) without calling any user driver method.
+    /// The selector is spelled out because a misspelled optional method would
+    /// silently never be called.
+    @objc(updater:didFinishUpdateCycleForUpdateCheck:error:)
+    func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: (any Error)?) {
+        guard let error = error as NSError? else { return }
+        let noUpdate = error.domain == SUSparkleErrorDomain && error.code == Int(SUError.noUpdateError.rawValue)
+        guard !noUpdate, let state = model?.state else { return }
+        userInitiated = false
+        set(state.afterFailedUpdateCycle())
+    }
+
     // MARK: SPUUserDriver
 
     func show(_ request: SPUUpdatePermissionRequest, reply: @escaping (SUUpdatePermissionResponse) -> Void) {
