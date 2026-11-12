@@ -4,7 +4,6 @@ set -euo pipefail
 # Builds a universal release of Agent Gauge and zips it for download.
 #
 #   AGENT_GAUGE_VERSION        version string, e.g. 0.2.0 (required)
-#   AGENT_GAUGE_BUILD_NUMBER   CFBundleVersion (default 1)
 #   AGENT_GAUGE_SIGN_IDENTITY  Developer ID identity; ad hoc when unset
 #   NOTARY_KEY_PATH, NOTARY_KEY_ID, NOTARY_ISSUER_ID
 #                              App Store Connect API key for notarization;

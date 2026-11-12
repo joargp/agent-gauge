@@ -6,6 +6,7 @@ struct MenuBarContentView: View {
     let provider: GaugeProvider
     @ObservedObject var store: UsageStore
     @ObservedObject var model: AppModel
+    @ObservedObject var updates: UpdateModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -49,6 +50,8 @@ struct MenuBarContentView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(.red.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
             }
+
+            UpdateRowView(updates: updates)
 
             Divider()
 
@@ -177,6 +180,27 @@ struct MenuBarContentView: View {
             }
 
             Divider()
+
+            if updates.isEnabled {
+                Section("Agent Gauge \(updates.currentVersion)") {
+                    Button("Check for Updates…") {
+                        updates.checkForUpdates()
+                    }
+                    .disabled(!updates.canStartCheck)
+                }
+
+                Picker("Automatic Updates", selection: Binding(
+                    get: { updates.mode },
+                    set: { updates.setMode($0) }
+                )) {
+                    ForEach(UpdateMode.allCases) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                }
+                .pickerStyle(.inline)
+
+                Divider()
+            }
 
             Button("Welcome…") {
                 WelcomeWindowController.shared.show(model: model)

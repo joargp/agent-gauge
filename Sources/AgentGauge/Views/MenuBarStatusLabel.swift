@@ -5,6 +5,7 @@ import GaugeCore
 struct MenuBarStatusLabel: View {
     let provider: GaugeProvider
     @ObservedObject var store: UsageStore
+    var showsUpdateDot = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -21,6 +22,13 @@ struct MenuBarStatusLabel: View {
                 fiveHour: store.usage?.fiveHourState() ?? .awaitingCapture,
                 weekly: store.usage?.weeklyState() ?? .awaitingCapture
             )
+            .overlay(alignment: .topTrailing) {
+                if showsUpdateDot {
+                    Circle()
+                        .fill(Color(nsColor: .systemBlue))
+                        .frame(width: 5, height: 5)
+                }
+            }
             .environment(\.colorScheme, colorScheme)
         )
         renderer.proposedSize = ProposedViewSize(width: 18, height: 18)
@@ -37,6 +45,11 @@ struct MenuBarStatusLabel: View {
     }
 
     private var accessibilityLabel: String {
+        let label = usageAccessibilityLabel
+        return showsUpdateDot ? "\(label) Update available." : label
+    }
+
+    private var usageAccessibilityLabel: String {
         guard let usage = store.usage else {
             return store.isRefreshing ? "\(provider.name) usage, refreshing" : "\(provider.name) usage"
         }

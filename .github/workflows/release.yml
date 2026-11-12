@@ -8,6 +8,14 @@ on:
 
 permissions:
   contents: write
+  # Starts the Pages deploy after the update feed changes.
+  actions: write
+
+# One release at a time, so update feed commits don't race, and a release
+# that is partway through publishing is never cancelled.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -23,12 +31,23 @@ jobs:
       NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
       NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
       NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+      # Built-in updates. The public key goes into the app; the private key
+      # signs the download listed in the update feed.
+      AGENT_GAUGE_SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
+      SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
     steps:
       - name: Require a tag
         if: github.ref_type != 'tag'
         run: |
           echo "Run this workflow on a release tag, for example: gh workflow run release.yml --ref v0.2.0" >&2
           exit 1
+
+      - name: Require a plain version
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tags look like v1.2.3, got $TAG" >&2
+            exit 1
+          fi
 
       - uses: actions/checkout@v4
 
@@ -59,18 +78,116 @@ jobs:
       - name: Build and package
         run: |
           export AGENT_GAUGE_VERSION="${TAG#v}"
-          export AGENT_GAUGE_BUILD_NUMBER="${{ github.run_number }}"
           ZIP="$(./script/package_release.sh | tail -n 1)"
           echo "ZIP=$ZIP" >> "$GITHUB_ENV"
+          echo "ASSET=$(basename "$ZIP")" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
         with:
           name: AgentGauge-${{ env.TAG }}
           path: ${{ env.ZIP }}
 
+      # A download that is already published is never replaced: installed apps
+      # may already be checking it against the signature in the update feed.
       - name: Attach to GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Agent Gauge ${TAG#v}" --generate-notes
-          gh release upload "$TAG" "$ZIP" --clobber
+          if gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qxF "$ASSET"; then
+            echo "::notice::$ASSET is already on the release and is kept as it is. Delete it first to publish a new build."
+          else
+            gh release upload "$TAG" "$ZIP"
+          fi
+
+      - name: Check that this release can go in the update feed
+        id: feed
+        run: |
+          missing=()
+          [[ -n "$SPARKLE_PRIVATE_KEY" ]] || missing+=(SPARKLE_PRIVATE_KEY)
+          [[ -n "$AGENT_GAUGE_SPARKLE_PUBLIC_KEY" ]] || missing+=(SPARKLE_PUBLIC_KEY)
+          [[ -n "${AGENT_GAUGE_SIGN_IDENTITY:-}" ]] || missing+=(MACOS_SIGNING_IDENTITY)
+          [[ -n "${NOTARY_KEY_PATH:-}" ]] || missing+=(NOTARY_KEY_P8)
+          if (( ${#missing[@]} )); then
+            echo "::warning::Not added to the update feed. Missing: ${missing[*]}"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Everything below checks and signs the file people actually download,
+      # not the local build, so the feed always matches what is published.
+      - name: Download and check the published app
+        if: steps.feed.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PUBLISHED_DIR="$RUNNER_TEMP/published"
+          gh release download "$TAG" --pattern "$ASSET" --dir "$PUBLISHED_DIR"
+          PUBLISHED="$PUBLISHED_DIR/$ASSET"
+          ditto -x -k "$PUBLISHED" "$PUBLISHED_DIR/app"
+          APP="$PUBLISHED_DIR/app/Agent Gauge.app"
+          PLIST="$APP/Contents/Info.plist"
+
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")"
+          build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST")"
+          key="$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$PLIST")"
+          [[ "$version" == "${TAG#v}" ]] || { echo "Published app is $version, not ${TAG#v}" >&2; exit 1; }
+          [[ "$key" == "$AGENT_GAUGE_SPARKLE_PUBLIC_KEY" ]] || { echo "Published app has a different update key" >&2; exit 1; }
+          codesign --verify --strict --deep "$APP"
+          xcrun stapler validate "$APP"
+          spctl --assess --type execute --verbose "$APP"
+
+          echo "PUBLISHED=$PUBLISHED" >> "$GITHUB_ENV"
+          echo "BUILD=$build" >> "$GITHUB_ENV"
+
+      - name: Sign the published download for Sparkle
+        if: steps.feed.outputs.publish == 'true'
+        run: |
+          KEY_FILE="$RUNNER_TEMP/sparkle.key"
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$KEY_FILE"
+          SIGNATURE="$(.build/artifacts/sparkle/Sparkle/bin/sign_update -f "$KEY_FILE" "$PUBLISHED")"
+          rm "$KEY_FILE"
+          echo "SIGNATURE=$SIGNATURE" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+        if: steps.feed.outputs.publish == 'true'
+        with:
+          ref: main
+          path: main
+
+      - name: Add the release to the update feed
+        if: steps.feed.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+          gh release view "$TAG" --json body --jq .body > "$RUNNER_TEMP/notes.md"
+          cd main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for _ in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+            python3 -I ../script/update_appcast.py site/appcast.xml \
+              --version "${TAG#v}" \
+              --build "$BUILD" \
+              --url "$REPO_URL/releases/download/$TAG/$ASSET" \
+              --release-page "$REPO_URL/releases/tag/$TAG" \
+              --signature "$SIGNATURE" \
+              --notes "$RUNNER_TEMP/notes.md"
+            git add site/appcast.xml
+            git diff --cached --quiet && { echo "Update feed already up to date"; exit 0; }
+            git commit -m "Add Agent Gauge ${TAG#v} to the update feed"
+            git push origin HEAD:main && exit 0
+            echo "Push failed, retrying" >&2
+          done
+          exit 1
+
+      # Pushes made with the workflow token don't start other workflows, but a
+      # dispatch does.
+      - name: Publish the update feed
+        if: steps.feed.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main

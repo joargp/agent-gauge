@@ -27,6 +27,18 @@ Builds from 0.1.2 on are signed with a Developer ID and notarized by Apple, so t
 xattr -dr com.apple.quarantine "/Applications/Agent Gauge.app"
 ```
 
+## Updates
+
+From 0.1.5 on, Agent Gauge updates itself with [Sparkle](https://sparkle-project.org). Versions 0.1.4 and older can't, so download 0.1.5 or later by hand once.
+
+Choose how in the gear menu under **Automatic Updates**:
+
+- **Download, Install on Quit** (the default): checks once a day, downloads new versions in the background and installs them when Agent Gauge quits. A blue dot on the menu bar icon and a row in the popover say when one is ready; **Restart Now** installs it right away.
+- **Notify Me**: checks once a day and shows the new version in the popover, with **Install** and **Later**.
+- **Off**: never checks by itself. **Check for Updates…** still works. Turning this off doesn't cancel an update that has already been downloaded.
+
+Agent Gauge reads its update feed from `https://joargp.github.io/agent-gauge/appcast.xml`. Every download is signed, and Sparkle refuses any that don't match the key built into the app. After an update, Agent Gauge also refreshes its copy of the Claude Code capture helper in `~/.claude/claude-gauge/`, without touching your settings.
+
 ## Claude
 
 ### Privacy and authentication
@@ -179,7 +191,18 @@ To build the same universal, zipped app that releases ship:
 AGENT_GAUGE_VERSION=0.1.0 ./script/package_release.sh
 ```
 
-Pushing a `v*` tag runs the Release workflow, which tests, packages, and attaches the zip to that GitHub release. To sign with a Developer ID and notarize, add these secrets to a GitHub environment named `release` that only `v*` tags may use: `MACOS_CERTIFICATE_P12` (base64), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`, `NOTARY_KEY_P8` (base64), `NOTARY_KEY_ID` and `NOTARY_ISSUER_ID`. Without them the build is signed ad hoc.
+The build number (`CFBundleVersion`) comes from the version: 0.2.0 is 2000 and 1.4.12 is 1004012, so it always rises with the version. Versions must look like `1.2.3`.
+
+Pushing a `v1.2.3` tag runs the Release workflow, which tests, packages, and attaches the zip to that GitHub release. To sign with a Developer ID and notarize, add these secrets to a GitHub environment named `release` that only `v*` tags may use: `MACOS_CERTIFICATE_P12` (base64), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`, `NOTARY_KEY_P8` (base64), `NOTARY_KEY_ID` and `NOTARY_ISSUER_ID`. Without them the build is signed ad hoc.
+
+For built-in updates, the same environment also needs the variable `SPARKLE_PUBLIC_KEY` and the secret `SPARKLE_PRIVATE_KEY`, from Sparkle's `generate_keys` (in `.build/artifacts/sparkle/Sparkle/bin/` after `swift build`). When everything is set, the workflow then:
+
+1. downloads the zip from the release and checks its version, update key, signature and notarization;
+2. signs that exact file with `sign_update`;
+3. adds it to `site/appcast.xml` on `main` with `script/update_appcast.py`, using the release notes' bullet points as the in-app "What's new" list;
+4. starts the Pages workflow to publish the feed.
+
+A zip that is already on a release is never replaced, because installed apps check it against the signature in the feed. To publish a new build for the same version, delete the asset first. If anything is missing, the release is still created but isn't added to the feed. Builds without `AGENT_GAUGE_SPARKLE_PUBLIC_KEY`, including every local build, have no updater and show no update controls.
 
 To verify the complete local Codex login and app-server path on this Mac:
 
@@ -240,7 +263,8 @@ rm -rf ~/.claude/claude-gauge
 - `ClaudeProvider/` — statusline JSON decoding, cache format and reader, capture logic, and settings mutation
 - `ClaudeGaugeCapture/` — fast stdin capture binary and statusLine install/uninstall commands
 - `CodexProvider/` — Codex executable resolution, local app-server transport, and decoding
-- `AgentGauge/App/` — menu bar scenes, provider visibility, and launch at login
+- `AgentGauge/App/` — menu bar scenes, provider visibility, launch at login, and the capture helper refresh
+- `AgentGauge/Update/` — Sparkle updater with a custom driver (as in Ghostty) that shows update states in the popover
 - `AgentGauge/Stores/` — per-provider refresh lifecycle and stale-data preservation
 - `AgentGauge/Support/` — per-provider descriptor and palette
 - `AgentGauge/Views/` — status label, popover, usage rings, data-age indicator, and settings menu

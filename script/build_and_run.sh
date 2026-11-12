@@ -4,16 +4,26 @@ set -euo pipefail
 MODE="${1:-run}"
 EXECUTABLE_NAME="AgentGauge"
 DISPLAY_NAME="Agent Gauge"
-BUNDLE_ID="com.joar.agentgauge"
+BUNDLE_ID="${AGENT_GAUGE_BUNDLE_ID:-com.joar.agentgauge}"
 MIN_SYSTEM_VERSION="14.0"
 BUILD_CONFIGURATION="${AGENT_GAUGE_BUILD_CONFIGURATION:-debug}"
 VERSION="${AGENT_GAUGE_VERSION:-0.1.0}"
-BUILD_NUMBER="${AGENT_GAUGE_BUILD_NUMBER:-1}"
+if [[ ! "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+  echo "AGENT_GAUGE_VERSION must look like 1.2.3, got $VERSION" >&2
+  exit 2
+fi
+# Sparkle compares CFBundleVersion, so it must rise with every release. Deriving
+# it from the version keeps it in release order: 0.2.0 is 2000, 1.4.12 is 1004012.
+BUILD_NUMBER=$(( 10#${BASH_REMATCH[1]} * 1000000 + 10#${BASH_REMATCH[2]} * 1000 + 10#${BASH_REMATCH[3]} ))
 # Set AGENT_GAUGE_UNIVERSAL=1 to build for both Apple silicon and Intel.
 UNIVERSAL="${AGENT_GAUGE_UNIVERSAL:-0}"
 # "-" signs ad hoc. A Developer ID identity also enables the hardened runtime
 # that notarization requires.
 SIGN_IDENTITY="${AGENT_GAUGE_SIGN_IDENTITY:--}"
+# Built-in updates are on only when the Sparkle public key is set (release
+# builds). Without it the app has no updater and shows no update controls.
+SPARKLE_PUBLIC_KEY="${AGENT_GAUGE_SPARKLE_PUBLIC_KEY:-}"
+FEED_URL="${AGENT_GAUGE_FEED_URL:-https://joargp.github.io/agent-gauge/appcast.xml}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
@@ -22,6 +32,8 @@ APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
 APP_HELPERS="$APP_CONTENTS/Helpers"
+APP_FRAMEWORKS="$APP_CONTENTS/Frameworks"
+SPARKLE_FRAMEWORK="$APP_FRAMEWORKS/Sparkle.framework"
 CAPTURE_NAME="claude-gauge-capture"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 
@@ -70,7 +82,7 @@ BUILD_BIN_PATH="$(swift build "${BUILD_FLAGS[@]}" --show-bin-path)"
 BUILD_BINARY="$BUILD_BIN_PATH/$EXECUTABLE_NAME"
 
 rm -rf "$APP_BUNDLE"
-mkdir -p "$APP_MACOS" "$APP_HELPERS"
+mkdir -p "$APP_MACOS" "$APP_HELPERS" "$APP_FRAMEWORKS"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
 
@@ -79,6 +91,14 @@ chmod +x "$APP_BINARY"
 # current system look, such as the larger menu bar window corners.
 vtool -set-build-version macos "$MIN_SYSTEM_VERSION" "$(xcrun --sdk macosx --show-sdk-version)" \
   -replace -output "$APP_BINARY" "$APP_BINARY"
+
+# Sparkle. ditto keeps the framework's symlinks and permissions. The XPC
+# services are only needed by sandboxed apps, and Agent Gauge isn't one.
+ditto "$BUILD_BIN_PATH/Sparkle.framework" "$SPARKLE_FRAMEWORK"
+rm -rf "$SPARKLE_FRAMEWORK/XPCServices" "$SPARKLE_FRAMEWORK/Versions/B/XPCServices"
+if ! otool -l "$APP_BINARY" | grep -q "@executable_path/../Frameworks"; then
+  install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP_BINARY"
+fi
 
 # The welcome window's Connect button installs this helper as Claude Code's
 # status line.
@@ -112,6 +132,17 @@ cat >"$INFO_PLIST" <<PLIST
   <true/>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
+$(if [[ -n "$SPARKLE_PUBLIC_KEY" ]]; then cat <<SPARKLE
+  <key>SUFeedURL</key>
+  <string>$FEED_URL</string>
+  <key>SUPublicEDKey</key>
+  <string>$SPARKLE_PUBLIC_KEY</string>
+  <key>SUEnableAutomaticChecks</key>
+  <true/>
+  <key>SUAutomaticallyUpdate</key>
+  <true/>
+SPARKLE
+fi)
 </dict>
 </plist>
 PLIST
@@ -121,7 +152,11 @@ SIGN_FLAGS=(--force --sign "$SIGN_IDENTITY")
 if [[ "$SIGN_IDENTITY" != "-" ]]; then
   SIGN_FLAGS+=(--options runtime --timestamp)
 fi
-# Sign the nested helper before the bundle that contains it.
+# Sign nested code from the inside out: Sparkle's helpers, the framework,
+# the capture helper, then the bundle that contains them all.
+codesign "${SIGN_FLAGS[@]}" "$SPARKLE_FRAMEWORK/Versions/B/Autoupdate" >/dev/null
+codesign "${SIGN_FLAGS[@]}" "$SPARKLE_FRAMEWORK/Versions/B/Updater.app" >/dev/null
+codesign "${SIGN_FLAGS[@]}" "$SPARKLE_FRAMEWORK" >/dev/null
 codesign "${SIGN_FLAGS[@]}" "$APP_HELPERS/$CAPTURE_NAME" >/dev/null
 codesign "${SIGN_FLAGS[@]}" "$APP_BUNDLE" >/dev/null
 

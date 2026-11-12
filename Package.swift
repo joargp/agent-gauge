@@ -11,6 +11,9 @@ let package = Package(
         .executable(name: "AgentGauge", targets: ["AgentGauge"]),
         .executable(name: "claude-gauge-capture", targets: ["ClaudeGaugeCapture"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.10.1")
+    ],
     targets: [
         .target(
             name: "GaugeCore",
@@ -28,7 +31,12 @@ let package = Package(
         ),
         .executableTarget(
             name: "AgentGauge",
-            dependencies: ["GaugeCore", "ClaudeProvider", "CodexProvider"],
+            dependencies: [
+                "GaugeCore",
+                "ClaudeProvider",
+                "CodexProvider",
+                .product(name: "Sparkle", package: "Sparkle")
+            ],
             path: "Sources/AgentGauge"
         ),
         .executableTarget(
