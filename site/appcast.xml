@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+  <channel>
+    <title>Agent Gauge</title>
+    <link>https://joargp.github.io/agent-gauge/</link>
+    <description>Updates for Agent Gauge</description>
+    <language>en</language>
+    <item>
+      <title>Agent Gauge 0.1.5</title>
+      <pubDate>Thu, 12 Nov 2026 11:30:19 +0000</pubDate>
+      <sparkle:version>1005</sparkle:version>
+      <sparkle:shortVersionString>0.1.5</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:fullReleaseNotesLink>https://github.com/joargp/agent-gauge/releases/tag/v0.1.5</sparkle:fullReleaseNotesLink>
+      <description>&lt;h2&gt;Agent Gauge 0.1.5&lt;/h2&gt;&lt;p&gt;&lt;a href="https://github.com/joargp/agent-gauge/releases/tag/v0.1.5"&gt;Release notes&lt;/a&gt;&lt;/p&gt;</description>
+      <enclosure url="https://github.com/joargp/agent-gauge/releases/download/v0.1.5/AgentGauge-0.1.5.zip" type="application/octet-stream" sparkle:edSignature="KirBHh1A3jMHremsWJXNQmg5a+im1uM+ANKTH98jcl92G6aGT36dYGAzOi+4yYd/l0K2+9h7QWER47lGaQBbCg==" length="2215466" />
+    </item>
+  </channel>
+</rss>
