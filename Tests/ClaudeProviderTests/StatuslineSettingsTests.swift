@@ -27,6 +27,62 @@ final class StatuslineSettingsTests: XCTestCase {
         XCTAssertNotNil(object["statusLine"])
     }
 
+    func testPlainPathStaysBare() {
+        XCTAssertEqual(StatuslineSettings.command(forCapturePath: capturePath), capturePath)
+    }
+
+    func testPathWithSpacesAndShellCharactersIsQuoted() throws {
+        let path = "/Users/Jo Doe's $HOME;x/.claude/claude-gauge/capture"
+        let expected = #"'/Users/Jo Doe'\''s $HOME;x/.claude/claude-gauge/capture'"#
+        XCTAssertEqual(StatuslineSettings.command(forCapturePath: path), expected)
+
+        // The shell turns the command back into exactly one word: the path.
+        let shell = Process()
+        shell.executableURL = URL(fileURLWithPath: "/bin/sh")
+        shell.arguments = ["-c", "printf %s \(expected)"]
+        let output = Pipe()
+        shell.standardOutput = output
+        try shell.run()
+        shell.waitUntilExit()
+        XCTAssertEqual(String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self), path)
+    }
+
+    func testQuotedInstallIsRecognisedAsOurs() throws {
+        let path = "/Users/Jo Doe/.claude/claude-gauge/capture"
+        let installed = try StatuslineSettings.apply(settingsJSON: nil, capturePath: path)
+        let statusLine = try XCTUnwrap(StatuslineSettings.decodeObject(installed.data)["statusLine"] as? [String: Any])
+        XCTAssertEqual(statusLine["command"] as? String, "'\(path)'")
+
+        XCTAssertEqual(
+            StatuslineSettings.inspect(settingsJSON: installed.data, capturePath: path),
+            .installed(command: "'\(path)'")
+        )
+        XCTAssertEqual(try StatuslineSettings.apply(settingsJSON: installed.data, capturePath: path).change, .alreadyInstalled)
+        XCTAssertEqual(try StatuslineSettings.remove(settingsJSON: installed.data, capturePath: path).change, .removed)
+    }
+
+    func testOldUnquotedInstallIsUpgradedToQuoted() throws {
+        let path = "/Users/Jo Doe/.claude/claude-gauge/capture"
+        let input = Data(#"{"statusLine":{"type":"command","command":"/Users/Jo Doe/.claude/claude-gauge/capture"}}"#.utf8)
+
+        let result = try StatuslineSettings.apply(settingsJSON: input, capturePath: path)
+
+        XCTAssertEqual(result.change, .updated)
+        let statusLine = try XCTUnwrap(StatuslineSettings.decodeObject(result.data)["statusLine"] as? [String: Any])
+        XCTAssertEqual(statusLine["command"] as? String, "'\(path)'")
+    }
+
+    func testSlashesAreNotEscaped() throws {
+        let input = Data(#"{"permissions":{"allow":["Read(/tmp/**)"]}}"#.utf8)
+
+        let result = try StatuslineSettings.apply(settingsJSON: input, capturePath: capturePath)
+        let text = String(decoding: result.data, as: UTF8.self)
+
+        XCTAssertTrue(text.contains("Read(/tmp/**)"))
+        XCTAssertTrue(text.contains(capturePath))
+        XCTAssertFalse(text.contains(#"\/"#))
+    }
+
     func testAlreadyInstalledIsIdempotent() throws {
         let input = Data(
             #"{"statusLine":{"type":"command","command":"/Users/test/.claude/claude-gauge/capture"}}"#.utf8

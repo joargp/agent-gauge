@@ -51,23 +51,35 @@ public enum StatuslineSettings {
         return state(of: object, capturePath: capturePath)
     }
 
+    /// The shell command that runs the helper. Claude Code runs it through a
+    /// shell, so a path with spaces or shell characters is single-quoted.
+    /// Plain paths stay bare, so existing installs are left byte for byte.
+    public static func command(forCapturePath capturePath: String) -> String {
+        let plain = capturePath.allSatisfy { character in
+            character.isASCII && (character.isLetter || character.isNumber || "/._-".contains(character))
+        }
+        guard !plain, !capturePath.isEmpty else { return capturePath }
+        return "'" + capturePath.replacingOccurrences(of: "'", with: #"'\''"#) + "'"
+    }
+
     public static func apply(settingsJSON: Data?, capturePath: String) throws -> (data: Data, change: StatuslineChange) {
         var object = try decodeObject(settingsJSON)
+        let expected = command(forCapturePath: capturePath)
 
         switch state(of: object, capturePath: capturePath) {
         case let .foreign(command):
             throw ClaudeUsageError.foreignStatusLine(command: command)
         case .integrated:
             return (try encode(object), .alreadyInstalled)
-        case let .installed(command) where command == capturePath:
+        case let .installed(command) where command == expected:
             return (try encode(object), .alreadyInstalled)
         case .installed:
-            object["statusLine"] = ["type": "command", "command": capturePath]
+            object["statusLine"] = ["type": "command", "command": expected]
             return (try encode(object), .updated)
         case .malformed:
             throw ClaudeUsageError.malformedStatusLine
         case .missing, .unreadable:
-            object["statusLine"] = ["type": "command", "command": capturePath]
+            object["statusLine"] = ["type": "command", "command": expected]
             return (try encode(object), .installed)
         }
     }
@@ -106,7 +118,7 @@ public enum StatuslineSettings {
     }
 
     static func encode(_ object: [String: Any]) throws -> Data {
-        var data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
+        var data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
         data.append(0x0A)
         return data
     }
@@ -128,7 +140,7 @@ public enum StatuslineSettings {
         }
 
         let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed == capturePath {
+        if trimmed == capturePath || trimmed == Self.command(forCapturePath: capturePath) {
             return .installed(command: command)
         }
         if trimmed.contains(capturePath)

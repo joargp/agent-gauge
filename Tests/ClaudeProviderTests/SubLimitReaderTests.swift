@@ -122,6 +122,66 @@ final class SubLimitReaderTests: XCTestCase {
         XCTAssertNil(afterAbsent)
     }
 
+    func testLongFailureStreakHidesTheReading() async {
+        let clock = Clock()
+        let fetcher = Fetcher(.found(limit(clock: clock)))
+        let reader = makeReader(fetcher, clock)
+        _ = await reader.current(userInitiated: true)
+
+        fetcher.outcome = .failed
+        clock.now.addTimeInterval(400)
+        let shortlyAfter = await reader.current(userInitiated: true)
+        XCTAssertEqual(shortlyAfter?.name, "Fable", "One failed run keeps the reading")
+
+        clock.now.addTimeInterval(SubLimitReader.staleAfterFailures)
+        let muchLater = await reader.current(userInitiated: true)
+        XCTAssertNil(muchLater, "Thirty minutes of failures hides it")
+
+        fetcher.outcome = .found(limit(clock: clock))
+        clock.now.addTimeInterval(61)
+        let recovered = await reader.current(userInitiated: true)
+        XCTAssertEqual(recovered?.name, "Fable")
+    }
+
+    func testOldReadingStaysWhileNothingFails() async {
+        let clock = Clock()
+        let fetcher = Fetcher(.found(limit(clock: clock)))
+        let reader = makeReader(fetcher, clock)
+        let captured = clock.now
+        _ = await reader.current(userInitiated: true, capturedAt: captured)
+
+        // Claude Code idle: no new capture, so no runs and nothing failing.
+        clock.now.addTimeInterval(SubLimitReader.staleAfterFailures * 4)
+        let result = await reader.current(userInitiated: false, capturedAt: captured)
+
+        XCTAssertEqual(result?.name, "Fable")
+        XCTAssertEqual(fetcher.calls, 1)
+    }
+
+    func testBackgroundPollsWaitForNewClaudeActivity() async throws {
+        let clock = Clock()
+        let fetcher = Fetcher(.found(limit(clock: clock)))
+        let reader = makeReader(fetcher, clock)
+        let first = clock.now
+
+        _ = await reader.current(userInitiated: false, capturedAt: first)
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(fetcher.calls, 1)
+
+        clock.now.addTimeInterval(SubLimitReader.pollInterval + 1)
+        _ = await reader.current(userInitiated: false, capturedAt: first)
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(fetcher.calls, 1, "Same capture: Claude Code is idle, so no run")
+
+        _ = await reader.current(userInitiated: false, capturedAt: first.addingTimeInterval(200))
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(fetcher.calls, 2, "New capture: run again")
+
+        clock.now.addTimeInterval(SubLimitReader.refreshInterval + 1)
+        _ = await reader.current(userInitiated: true, capturedAt: first.addingTimeInterval(200))
+        XCTAssertEqual(fetcher.calls, 3, "Refresh always runs")
+    }
+
     func testFailureWithoutReadingGivesNil() async {
         let clock = Clock()
         let reader = makeReader(Fetcher(.failed), clock)

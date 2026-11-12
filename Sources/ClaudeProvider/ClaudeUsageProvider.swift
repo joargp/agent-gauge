@@ -23,7 +23,7 @@ public struct ClaudeUsageProvider: UsageProvider {
     /// Fable limit is optional extra data from the Claude CLI.
     public func readUsage(userInitiated: Bool) async throws -> UsageSnapshot {
         let snapshot = try readCache()
-        let subLimit = await subLimitReader.current(userInitiated: userInitiated)
+        let subLimit = await subLimitReader.current(userInitiated: userInitiated, capturedAt: snapshot.capturedAt)
         return snapshot.withSubLimit(subLimit)
     }
 

@@ -8,7 +8,8 @@ struct ClaudeUsageCommand: Sendable {
     private let resolver: ClaudeExecutableResolver
     private let timeout: TimeInterval
 
-    init(resolver: ClaudeExecutableResolver = ClaudeExecutableResolver(), timeout: TimeInterval = 12) {
+    /// Runs normally take 3 to 8 seconds; a busy Mac can take longer.
+    init(resolver: ClaudeExecutableResolver = ClaudeExecutableResolver(), timeout: TimeInterval = 20) {
         self.resolver = resolver
         self.timeout = timeout
     }
@@ -78,8 +79,11 @@ struct ClaudeUsageCommand: Sendable {
             _ = drained.wait(timeout: .now() + 1)
             return nil
         }
-        _ = drained.wait(timeout: .now() + 2)
-        guard process.terminationStatus == 0 else { return nil }
+        // Something else may still hold the pipe open. Treat that as a failure,
+        // so `collected` is only read after the reader has finished with it.
+        guard drained.wait(timeout: .now() + 2) == .success,
+              process.terminationStatus == 0
+        else { return nil }
         return collected.data
     }
 
