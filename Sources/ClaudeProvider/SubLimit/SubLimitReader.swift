@@ -11,7 +11,9 @@ public actor SubLimitReader {
         case failed
     }
 
-    public static let pollInterval: TimeInterval = 300
+    /// Background runs only keep the value warm for the popover, which reads
+    /// it again when opened, so they can be rare.
+    public static let pollInterval: TimeInterval = 900
     public static let refreshInterval: TimeInterval = 60
     /// A reading is dropped once reads have kept failing for this long, so a
     /// frozen value never sits under a fresh "Updated" line.
@@ -40,8 +42,9 @@ public actor SubLimitReader {
         self.now = now
     }
 
-    /// The last known limit. Starts a CLI run when one is due: every five
-    /// minutes, or once a minute when the user asked for a refresh. A
+    /// The last known limit. Starts a CLI run when one is due: every 15
+    /// minutes, or once a minute when the user opened the popover or pressed
+    /// Refresh. A
     /// user-initiated call waits for the run; others return at once.
     ///
     /// Each run starts the whole Claude CLI, so background runs also wait for

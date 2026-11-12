@@ -62,18 +62,21 @@ final class SubLimitReaderTests: XCTestCase {
         XCTAssertEqual(fetcher.calls, 1)
     }
 
-    func testPollsAtMostEveryFiveMinutes() async {
+    func testBackgroundPollsAtMostEveryFifteenMinutes() async throws {
         let clock = Clock()
         let fetcher = Fetcher(.found(limit(clock: clock)))
         let reader = makeReader(fetcher, clock)
+        XCTAssertEqual(SubLimitReader.pollInterval, 900)
 
         _ = await reader.current(userInitiated: true)
-        clock.now.addTimeInterval(299)
+        clock.now.addTimeInterval(SubLimitReader.pollInterval - 1)
         _ = await reader.current(userInitiated: false)
+        try await Task.sleep(for: .milliseconds(50))
         XCTAssertEqual(fetcher.calls, 1)
 
         clock.now.addTimeInterval(2)
-        _ = await reader.current(userInitiated: true)
+        _ = await reader.current(userInitiated: false)
+        try await Task.sleep(for: .milliseconds(50))
         XCTAssertEqual(fetcher.calls, 2)
     }
 

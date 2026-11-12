@@ -1,8 +1,11 @@
 import AppKit
 import SwiftUI
 import GaugeCore
+import os
 
 struct MenuBarContentView: View {
+    private static let logger = Logger(subsystem: "com.joar.agentgauge", category: "Popover")
+
     let provider: GaugeProvider
     @ObservedObject var store: UsageStore
     @ObservedObject var model: AppModel
@@ -81,6 +84,13 @@ struct MenuBarContentView: View {
         }
         .padding(18)
         .frame(width: 340)
+        .task {
+            // Opening the Claude popover reads the Fable limit again (at most
+            // once a minute). The last value shows meanwhile.
+            guard provider == .claude else { return }
+            Self.logger.info("Claude popover opened")
+            await store.refresh(userInitiated: true)
+        }
         .fixedSize(horizontal: false, vertical: true)
     }
 
