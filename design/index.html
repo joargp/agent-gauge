@@ -21,10 +21,12 @@
 <main>
   <h1>Agent Gauge: design</h1>
   <p class="lead">Every version runs the same simulated readings and moments. Use the dark bar at the top of each page to jump to a moment. Click a ring in the menu bar to open its popover.</p>
+  <a class="card" href="current3.html"><div class="sw" style="background:radial-gradient(circle at 78% 22%,#0a84ff 0 7px,transparent 8px),linear-gradient(transparent 58%,rgba(10,132,255,.35) 58% 80%,transparent 80%),#151515;border:10px solid #151515"></div><div><h2>0.3 · Current + Fable + updates</h2><p>Built-in updates the Ghostty way: an update row in the popover only when there is something to show, a blue dot on the menu bar icon, and the update mode in the gear menu. Default: download quietly, install when you quit.</p></div></a>
   <a class="card" href="current2.html"><div class="sw" style="background:linear-gradient(#151515 0 62%,transparent 62%) ,linear-gradient(90deg,#ffff3d 0 30%,#3a3a3a 30%) 0 75%/100% 10px no-repeat,#151515;border:10px solid #151515"></div><div><h2>0.2 · Current + Fable</h2><p>Current design plus a Fable row under the rings: Fable's own weekly cap, with a plain warning when it runs out before the weekly limit.</p></div></a>
   <a class="card" href="current.html"><div class="sw" style="background:conic-gradient(from 0deg,#cc7d5e 0 75%,#3a3a3a 0),#151515;border:10px solid #151515"></div><div><h2>0 · Current (0.1.4)</h2><p>Baseline copy of the shipping app. One menu bar icon per agent with nested rings; each opens its own popover with two large rings.</p></div></a>
   <h2 style="font-size:16px;margin:28px 0 8px">Revisions</h2>
   <ul style="padding-left:18px">
+    <li><a href="current3.html">Current + Fable + updates (0.3)</a> · 12 Nov 2026 · adds built-in updates: popover row, menu bar dot, gear menu modes</li>
     <li><a href="current2.html">Current + Fable (0.2)</a> · 12 Nov 2026 · adds the Fable row; menu bar unchanged</li>
     <li><a href="current.html">Current</a> · 12 Nov 2026 · baseline copy of 0.1.4</li>
   </ul>
@@ -37,6 +39,7 @@
     <li><em>Not connected</em>: no capture yet.</li>
     <li><em>Codex error → refresh</em>: press Refresh to recover.</li>
     <li>0.2 only: <em>Fable runs out first</em> and <em>No Fable cap</em> (a plan without one).</li>
+    <li>0.3 only: <em>Check: up to date</em>, <em>Found → downloads quietly</em> (then Restart Now, or Quit to install), <em>Ready, restart</em>, <em>Found (tell-me mode)</em> (What's new, Later, Install, Cancel), <em>Check fails → retry</em>. Change the mode in the gear menu.</li>
     <li>The gear menu: hide an agent, Launch at Login.</li>
   </ol>
 </main>

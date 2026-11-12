@@ -45,6 +45,11 @@ const initial = () => ({
   menu: false, // settings menu in the open popover
   visible: { claude: true, codex: true },
   launchAtLogin: true,
+  // Built-in updates: only rendered where <body data-updates="on">.
+  version: '0.1.5',
+  updateMode: 'download', // off | check | download
+  update: { phase: 'idle', progress: 0, notes: false },
+  nextCheck: 'uptodate', // what "Check for Updates…" finds: uptodate | found | error
   claude: {
     usage: {
       five: { used: 25, resetIn: 134 }, // 12:20
@@ -268,6 +273,7 @@ function popover(agent) {
     </div>
     ${s.setup ? `<div class="notice setup">${ICONS.wrench}<span>${s.setup}</span></div>` : ''}
     ${s.error ? `<div class="notice error">${ICONS.warn}<span>${s.error}</span></div>` : ''}
+    ${UPDATES ? updateRow() : ''}
     <hr>
     <div class="privacy">${ICONS.lock}<span>${a.privacy}</span></div>
     <div class="pop-actions">
@@ -286,6 +292,7 @@ function popover(agent) {
               )
               .join('')}
             <div class="sep"></div>
+            ${UPDATES ? updateMenuItems() : ''}
             <button role="menuitem" class="mi welcome"><span class="tick"></span>Welcome…</button>
             <button role="menuitemcheckbox" class="mi launch"><span class="tick">${state.launchAtLogin ? ICONS.check : ''}</span>Launch at Login</button>
           </div>`
@@ -304,6 +311,12 @@ function renderProduct(device) {
     el.classList.toggle('active', state.open === k);
     el.setAttribute('aria-label', `${AGENTS[k].name} usage`);
     el.innerHTML = statusItem(k);
+  }
+  if (UPDATES) {
+    // One dot, on the first visible icon, while an update waits for the person.
+    const first = Object.keys(AGENTS).find((k) => state.visible[k]);
+    const dot = ['available', 'ready'].includes(state.update.phase);
+    for (const k of Object.keys(AGENTS)) $(`#si-${k}`).classList.toggle('has-update', dot && k === first);
   }
   const pop = $('#popover');
   if (!state.open || !state.visible[state.open]) {
@@ -352,6 +365,190 @@ function moment(fn) {
     render();
   };
 }
+
+/* ---------- built-in updates (revision current3, gated by <body data-updates="on">) ----------
+   Mirrors Sparkle's driver states as Ghostty's UpdateDriver lists them. */
+const UPDATES = document.body.dataset.updates === 'on';
+const VERSION = '0.1.5';
+const NEXT = '0.1.6';
+const NOTES = [
+  'Shows Fable’s own weekly limit for Claude.',
+  'Updates itself. This is the first version that can.',
+  'Fixes the Codex ring staying grey after waking from sleep.',
+];
+const MODES = {
+  off: 'Off',
+  check: 'Notify me',
+  download: 'Download, install on quit',
+};
+
+function updateRow() {
+  const u = state.update;
+  const ver = state.version;
+  const notes = u.notes
+    ? `<ul class="notes">${NOTES.map((n) => `<li>${n}</li>`).join('')}</ul><button class="link skip">Skip this version</button>`
+    : '';
+  const what = `<button class="link toggle-notes" aria-expanded="${u.notes}">${u.notes ? 'Hide changes' : 'What’s new'}</button>`;
+  const rows = {
+    checking: [`<span class="spinner"></span>`, 'Checking for updates…', '', ''],
+    uptodate: [ICONS.check, `Agent Gauge ${ver} is the latest version.`, '', ''],
+    available: [
+      '<span class="up-dot"></span>',
+      `Agent Gauge ${NEXT} is available`,
+      `You have ${ver}. ${what}`,
+      `<button class="btn later">Later</button><button class="btn primary install">Install</button>`,
+    ],
+    downloading: [
+      '<span class="spinner"></span>',
+      `Downloading ${NEXT}`,
+      `<span class="bar up-bar"><span style="width:${u.progress}%"></span></span><span class="up-pct">${u.progress}%</span>`,
+      `<button class="btn cancel">Cancel</button>`,
+    ],
+    extracting: ['<span class="spinner"></span>', `Preparing ${NEXT}…`, '', ''],
+    ready: [
+      '<span class="up-dot"></span>',
+      `Agent Gauge ${NEXT} is ready`,
+      `Installs when you quit. ${what}`,
+      `<button class="btn primary restart">Restart Now</button>`,
+    ],
+    installing: ['<span class="spinner"></span>', `Installing ${NEXT}…`, 'Agent Gauge will open again in a moment.', ''],
+    error: [
+      ICONS.warn,
+      'Couldn’t check for updates',
+      'GitHub didn’t answer. You may be offline. Nothing was changed.',
+      `<button class="btn retry-update">Try Again</button>`,
+    ],
+  }[u.phase];
+  if (!rows) return '';
+  const [icon, title, sub, actions] = rows;
+  return `<div class="update" data-phase="${u.phase}" role="status">
+    <span class="up-icon">${icon}</span>
+    <div class="up-text"><strong>${title}</strong>${sub ? `<div class="up-sub">${sub}</div>` : ''}${notes && ['available', 'ready'].includes(u.phase) ? notes : ''}</div>
+    ${actions ? `<div class="up-actions">${actions}</div>` : ''}
+  </div>`;
+}
+
+function updateMenuItems() {
+  const busy = !['idle', 'uptodate', 'error'].includes(state.update.phase);
+  return `<div class="mi-header">Agent Gauge ${state.version}</div>
+    <button role="menuitem" class="mi check-updates" ${busy ? 'disabled' : ''}><span class="tick"></span>Check for Updates…</button>
+    <div class="mi-header">Automatic updates</div>
+    ${Object.entries(MODES)
+      .map(
+        ([k, label]) =>
+          `<button role="menuitemradio" class="mi set-mode" data-mode="${k}" aria-checked="${state.updateMode === k}"><span class="tick">${state.updateMode === k ? ICONS.check : ''}</span>${label}</button>`,
+      )
+      .join('')}
+    <div class="sep"></div>`;
+}
+
+function setUpdate(patch) {
+  const same = patch.phase === state.update.phase;
+  Object.assign(state.update, patch);
+  // Progress ticks update the bar in place, so buttons stay put and stay clickable.
+  const bar = $('.update[data-phase=downloading] .up-bar span');
+  if (same && patch.phase === 'downloading' && bar) {
+    bar.style.width = `${state.update.progress}%`;
+    $('.update .up-pct').textContent = `${state.update.progress}%`;
+    return;
+  }
+  render();
+}
+
+async function checkFlow({ result = 'uptodate' } = {}) {
+  setUpdate({ phase: 'checking', notes: false });
+  await sleep(1300);
+  if (result === 'error') return setUpdate({ phase: 'error' });
+  if (result === 'found') return foundFlow();
+  setUpdate({ phase: 'uptodate' });
+  await sleep(4000);
+  if (state.update.phase === 'uptodate') setUpdate({ phase: 'idle' });
+}
+
+// A new release was found: what happens next depends on the automatic-updates mode.
+async function foundFlow() {
+  if (state.updateMode !== 'download') return setUpdate({ phase: 'available' });
+  await downloadFlow();
+  setUpdate({ phase: 'ready' });
+}
+
+async function downloadFlow() {
+  for (let p = 0; p <= 100; p += 7) {
+    setUpdate({ phase: 'downloading', progress: Math.min(100, p) });
+    await sleep(170);
+  }
+  setUpdate({ phase: 'extracting', progress: 100 });
+  await sleep(900);
+}
+
+async function installFlow() {
+  setUpdate({ phase: 'installing', notes: false });
+  await sleep(1400);
+  state.open = null;
+  state.menu = false;
+  state.version = NEXT;
+  setUpdate({ phase: 'idle' });
+  toast(`Agent Gauge would quit and open again, now at ${NEXT}.`);
+}
+
+function updateClick(t) {
+  const hit = (sel) => t.closest(sel);
+  if (hit('.check-updates')) {
+    state.menu = false;
+    checkFlow({ result: state.nextCheck });
+    return true;
+  }
+  const mode = hit('.set-mode');
+  if (mode) {
+    state.updateMode = mode.dataset.mode;
+    state.menu = false;
+    render();
+    return true;
+  }
+  if (hit('.toggle-notes')) return setUpdate({ notes: !state.update.notes }), true;
+  if (hit('.later')) return setUpdate({ phase: 'idle', notes: false }), true;
+  if (hit('.skip')) {
+    setUpdate({ phase: 'idle', notes: false });
+    toast(`Skipped ${NEXT}. You’ll hear about the next version.`);
+    return true;
+  }
+  if (hit('.install')) {
+    (async () => {
+      await downloadFlow();
+      await installFlow();
+    })();
+    return true;
+  }
+  if (hit('.cancel')) {
+    epoch++; // stops the download flow
+    setUpdate({ phase: state.updateMode === 'download' ? 'idle' : 'available' });
+    toast('Download stopped. Nothing was installed.');
+    return true;
+  }
+  if (hit('.restart')) return installFlow(), true;
+  if (hit('.retry-update')) return checkFlow({ result: 'found' }), true;
+  if (hit('.quit') && state.update.phase === 'ready') {
+    state.open = null;
+    state.version = NEXT;
+    setUpdate({ phase: 'idle' });
+    toast(`Agent Gauge would install ${NEXT} and quit. Next launch is ${NEXT}.`);
+    return true;
+  }
+  return false;
+}
+
+const UPDATE_MOMENTS = UPDATES
+  ? {
+      upCheck: ['Check: up to date', moment(() => { state.open = 'claude'; checkFlow(); })],
+      upQuiet: ['Found → downloads quietly', moment(() => { state.open = 'claude'; foundFlow(); })],
+      upReady: ['Ready, restart', moment(() => { state.open = 'claude'; state.update.phase = 'ready'; })],
+      upNotify: [
+        'Found (tell-me mode)',
+        moment(() => { state.open = 'claude'; state.updateMode = 'check'; state.update.phase = 'available'; }),
+      ],
+      upError: ['Check fails → retry', moment(() => { state.open = 'codex'; checkFlow({ result: 'error' }); })],
+    }
+  : {};
 
 const FABLE_MOMENTS = FABLE
   ? {
@@ -427,6 +624,7 @@ mockup({
       }),
     ],
     ...FABLE_MOMENTS,
+    ...UPDATE_MOMENTS,
   },
   click(e) {
     const t = e.target;
@@ -436,6 +634,7 @@ mockup({
       state.menu = false;
       return render();
     }
+    if (UPDATES && updateClick(t)) return;
     if (t.closest('.gear')) {
       state.menu = !state.menu;
       return render();

@@ -1,0 +1,47 @@
+/* 0.3 · Current + Fable + updates
+   Changes from 0.2: built-in updates (Sparkle 2 with a custom driver, as Ghostty does it).
+   - An update row above the divider in every popover, only while there is something to show:
+     checking, up to date (fades after 4 s), available, downloading with %, preparing, ready,
+     installing, or an error.
+   - A small blue dot on the first visible menu bar icon while an update is available or ready.
+   - Gear menu: version, "Check for Updates…", and the automatic-updates mode
+     (off · tell me · download and install on quit, the default). */
+
+.status-item { position: relative; }
+.status-item.has-update::after { content: ""; position: absolute; top: 2px; right: 5px; width: 6px; height: 6px; border-radius: 50%;
+  background: #0a84ff; box-shadow: 0 0 0 1.5px rgba(20,22,30,.9); }
+
+.update { display: grid; grid-template-columns: 16px 1fr auto; gap: 4px 8px; align-items: start; padding: 10px 12px; border-radius: 10px;
+  background: rgba(10,132,255,.1); box-shadow: 0 0 0 .5px rgba(10,132,255,.35) inset; }
+.update[data-phase=checking], .update[data-phase=uptodate], .update[data-phase=extracting], .update[data-phase=installing] { background: rgba(255,255,255,.05); box-shadow: none; }
+.update[data-phase=error] { background: rgba(255,69,58,.09); box-shadow: none; }
+.up-icon { display: grid; place-items: center; height: 16px; }
+.up-icon svg { width: 13px; height: 13px; }
+.update[data-phase=uptodate] .up-icon { color: var(--ok); }
+.update[data-phase=error] .up-icon { color: var(--critical); }
+.up-icon .spinner { margin: 0; width: 12px; height: 12px; border-width: 1.5px; }
+.up-dot { width: 7px; height: 7px; border-radius: 50%; background: #0a84ff; }
+.up-text { min-width: 0; }
+.up-text strong { display: block; font-size: 11px; font-weight: 600; line-height: 16px; }
+.up-sub { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 10px; color: var(--secondary); line-height: 1.35; flex-wrap: wrap; }
+.update[data-phase=downloading] .up-sub { flex-wrap: nowrap; }
+.up-bar { flex: 1; height: 4px; }
+.up-bar span { background: #0a84ff; transition: width .17s linear; }
+.up-pct { font-variant-numeric: tabular-nums; min-width: 28px; text-align: right; }
+.up-actions { display: flex; gap: 6px; align-self: center; }
+.up-actions .btn { height: 20px; font-size: 11px; padding: 0 8px; }
+.btn.primary { background: #0a84ff; color: #fff; box-shadow: 0 .5px 0 rgba(255,255,255,.25) inset; }
+.btn.primary:active { background: #0070e0; }
+.link { padding: 0; border: 0; background: none; color: #4aa3ff; font-size: 10px; }
+.link:hover { text-decoration: underline; }
+.notes { margin: 8px 0 4px; padding-left: 14px; font-size: 10px; line-height: 1.45; color: var(--ink); }
+.notes li { margin: 2px 0; }
+.link.skip { color: var(--secondary); }
+
+.mi-header { padding: 4px 10px 2px 22px; font-size: 11px; font-weight: 600; color: var(--tertiary); }
+
+/* actions sit under the text so the title has the full width */
+.update[data-phase=available] .up-actions, .update[data-phase=ready] .up-actions, .update[data-phase=error] .up-actions { grid-column: 2 / -1; justify-self: end; margin-top: 4px; }
+
+/* the gear menu opens leftwards from the gear and never wraps */
+.menu { left: auto; right: -6px; white-space: nowrap; }
