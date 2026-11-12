@@ -12,7 +12,7 @@ Each agent gets a small menu bar icon with two rings: the outer ring is the week
 
 ## Install
 
-[**Download the latest release**](https://github.com/joargp/agent-gauge/releases/latest), unzip it, move **Agent Gauge** to Applications, and open it. The welcome window lets you pick your agents and connect Claude Code.
+[**Download Agent Gauge**](https://github.com/joargp/agent-gauge/releases/latest/download/AgentGauge.dmg), open the disk image, drag **Agent Gauge** to Applications, and open it from there. The welcome window lets you pick your agents and connect Claude Code. After that it updates itself.
 
 Signed and notarized by Apple. Needs macOS 14 or later, on Apple silicon or Intel.
 

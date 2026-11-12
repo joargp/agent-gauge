@@ -33,6 +33,8 @@ APP_MACOS="$APP_CONTENTS/MacOS"
 APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
 APP_HELPERS="$APP_CONTENTS/Helpers"
 APP_FRAMEWORKS="$APP_CONTENTS/Frameworks"
+APP_RESOURCES="$APP_CONTENTS/Resources"
+ICON_SOURCE="$ROOT_DIR/Resources/AppIcon.icon"
 SPARKLE_FRAMEWORK="$APP_FRAMEWORKS/Sparkle.framework"
 CAPTURE_NAME="claude-gauge-capture"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
@@ -82,7 +84,7 @@ BUILD_BIN_PATH="$(swift build "${BUILD_FLAGS[@]}" --show-bin-path)"
 BUILD_BINARY="$BUILD_BIN_PATH/$EXECUTABLE_NAME"
 
 rm -rf "$APP_BUNDLE"
-mkdir -p "$APP_MACOS" "$APP_HELPERS" "$APP_FRAMEWORKS"
+mkdir -p "$APP_MACOS" "$APP_HELPERS" "$APP_FRAMEWORKS" "$APP_RESOURCES"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
 
@@ -99,6 +101,27 @@ rm -rf "$SPARKLE_FRAMEWORK/XPCServices" "$SPARKLE_FRAMEWORK/Versions/B/XPCServic
 if ! otool -l "$APP_BINARY" | grep -q "@executable_path/../Frameworks"; then
   install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP_BINARY"
 fi
+
+# App icon. actool (full Xcode 26 or later) compiles the Icon Composer file into
+# Assets.car for macOS 26 and AppIcon.icns for older systems. With only the
+# command-line tools installed, the app is built without an icon.
+ICON_PLIST=""
+if xcrun --find actool >/dev/null 2>&1 \
+  && xcrun actool "$ICON_SOURCE" --compile "$APP_RESOURCES" --platform macosx \
+    --minimum-deployment-target "$MIN_SYSTEM_VERSION" --app-icon AppIcon \
+    --output-partial-info-plist "$DIST_DIR/icon-partial.plist" >/dev/null 2>&1 \
+  && [[ -f "$APP_RESOURCES/AppIcon.icns" ]]; then
+  ICON_PLIST="  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
+  <key>CFBundleIconName</key>
+  <string>AppIcon</string>"
+elif [[ "${AGENT_GAUGE_REQUIRE_ICON:-0}" == "1" ]]; then
+  echo "error: the app icon couldn't be compiled; release builds need actool from Xcode 26 or later" >&2
+  exit 1
+else
+  echo "warning: actool from Xcode 26 or later is needed for the app icon; building without one" >&2
+fi
+rm -f "$DIST_DIR/icon-partial.plist"
 
 # The welcome window's Connect button installs this helper as Claude Code's
 # status line.
@@ -132,6 +155,7 @@ cat >"$INFO_PLIST" <<PLIST
   <true/>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
+$ICON_PLIST
 $(if [[ -n "$SPARKLE_PUBLIC_KEY" ]]; then cat <<SPARKLE
   <key>SUFeedURL</key>
   <string>$FEED_URL</string>

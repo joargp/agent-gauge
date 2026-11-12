@@ -16,10 +16,13 @@ Some plans have no 5-hour window. Codex Pro Lite, for example, only reports a we
 
 ## Download
 
-Each [release](https://github.com/joargp/agent-gauge/releases) has a ready-made `AgentGauge-<version>.zip`, built by GitHub Actions for both Apple silicon and Intel Macs.
+Each [release](https://github.com/joargp/agent-gauge/releases) has a disk image, `AgentGauge.dmg`, built by GitHub Actions for both Apple silicon and Intel Macs. It also has `AgentGauge-<version>.zip`, which is what the built-in updater downloads.
 
-1. Download and unzip it, then move **Agent Gauge** to your Applications folder.
-2. Open it. The welcome window lets you pick agents, connect Claude Code's status line, and turn on launch at login.
+1. Download [`AgentGauge.dmg`](https://github.com/joargp/agent-gauge/releases/latest/download/AgentGauge.dmg) and open it.
+2. Drag **Agent Gauge** onto the Applications folder in the window that opens.
+3. Open Agent Gauge from Applications. The welcome window lets you pick agents, connect Claude Code's status line, and turn on launch at login.
+
+If you open it from somewhere else, such as the disk image or Downloads, Agent Gauge offers to move itself to Applications and open again from there. It can only update itself from Applications.
 
 Builds from 0.1.2 on are signed with a Developer ID and notarized by Apple, so they open normally. Older builds are blocked on first launch; allow them in **System Settings → Privacy & Security → Open Anyway**, or run:
 
@@ -187,7 +190,7 @@ Other supported modes:
 ./script/build_and_run.sh --telemetry
 ```
 
-To build the same universal, zipped app that releases ship:
+To build the same universal app, zip and disk image that releases ship (the app icon needs Xcode 26 or later, and the disk image needs Node for `appdmg`):
 
 ```bash
 AGENT_GAUGE_VERSION=0.1.0 ./script/package_release.sh
@@ -266,6 +269,7 @@ rm -rf ~/.claude/claude-gauge
 - `ClaudeGaugeCapture/` — fast stdin capture binary and statusLine install/uninstall commands
 - `CodexProvider/` — Codex executable resolution, local app-server transport, and decoding
 - `AgentGauge/App/` — menu bar scenes, provider visibility, launch at login, and the capture helper refresh
+- `Resources/AppIcon.icon` — the app icon, an Icon Composer file compiled by `actool` during the build; `Resources/dmg/` holds the disk image background, drawn by `script/make_dmg_background.swift`
 - `AgentGauge/Update/` — Sparkle updater with a custom driver (as in Ghostty) that shows update states in the popover
 - `AgentGauge/Stores/` — per-provider refresh lifecycle and stale-data preservation
 - `AgentGauge/Support/` — per-provider descriptor and palette

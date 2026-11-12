@@ -150,3 +150,47 @@ final class CaptureHelperRefreshTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: locations.claudeSettingsFile.path))
     }
 }
+
+final class MoveToApplicationsTests: XCTestCase {
+    private let home = "/Users/test"
+
+    func testAppsInEitherApplicationsFolderStay() {
+        XCTAssertFalse(MoveToApplications.needsMove(bundlePath: "/Applications/Agent Gauge.app", homeDirectory: home))
+        XCTAssertFalse(MoveToApplications.needsMove(bundlePath: "/Applications/Tools/Agent Gauge.app", homeDirectory: home))
+        XCTAssertFalse(MoveToApplications.needsMove(bundlePath: "/Users/test/Applications/Agent Gauge.app", homeDirectory: home))
+    }
+
+    func testAppsElsewhereAreOfferedAMove() {
+        for path in [
+            "/Users/test/Downloads/Agent Gauge.app",
+            "/Volumes/Agent Gauge/Agent Gauge.app",
+            "/private/var/folders/x/AppTranslocation/ABC/d/Agent Gauge.app",
+            "/Users/test/Desktop/Applications Backup/Agent Gauge.app",
+            "/ApplicationsOld/Agent Gauge.app",
+        ] {
+            XCTAssertTrue(MoveToApplications.needsMove(bundlePath: path, homeDirectory: home), path)
+        }
+    }
+
+    func testDestinationFallsBackToTheHomeApplicationsFolder() {
+        XCTAssertEqual(MoveToApplications.destinationFolder(homeDirectory: home, canWriteSystemApplications: true).path, "/Applications")
+        XCTAssertEqual(MoveToApplications.destinationFolder(homeDirectory: home, canWriteSystemApplications: false).path, "/Users/test/Applications")
+    }
+}
+
+final class MoveToApplicationsInstalledCopyTests: XCTestCase {
+    func testNewerOrSameInstalledCopyIsKept() {
+        XCTAssertTrue(MoveToApplications.keepsInstalledCopy(installedBuild: "1006", runningBuild: "1005"))
+        XCTAssertTrue(MoveToApplications.keepsInstalledCopy(installedBuild: "1005", runningBuild: "1005"))
+    }
+
+    func testOlderInstalledCopyIsReplaced() {
+        XCTAssertFalse(MoveToApplications.keepsInstalledCopy(installedBuild: "1004", runningBuild: "1005"))
+    }
+
+    func testMissingOrUnreadableBuildNumbers() {
+        XCTAssertFalse(MoveToApplications.keepsInstalledCopy(installedBuild: nil, runningBuild: "1005"))
+        XCTAssertFalse(MoveToApplications.keepsInstalledCopy(installedBuild: "x", runningBuild: "1005"))
+        XCTAssertTrue(MoveToApplications.keepsInstalledCopy(installedBuild: "1005", runningBuild: nil))
+    }
+}

@@ -12,6 +12,10 @@ struct AgentGaugeApp: App {
         CaptureHelperRefresh.refreshInBackground()
         // Wait for the app to finish launching before opening a window.
         DispatchQueue.main.async {
+            // Moving quits and reopens the app from Applications, where the
+            // welcome window then appears.
+            let updatesEnabled = UpdateModel.isConfigured(Bundle.main.infoDictionary ?? [:])
+            guard !MoveToApplications.offerIfNeeded(updatesEnabled: updatesEnabled) else { return }
             WelcomeWindowController.shared.showIfNeeded(model: model)
         }
     }

@@ -1,0 +1,45 @@
+{
+  "fill" : {
+    "linear-gradient" : [
+      "srgb:0.17255,0.17255,0.18824,1.00000",
+      "srgb:0.05490,0.05490,0.06275,1.00000"
+    ]
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "glass" : false,
+          "hidden" : false,
+          "image-name" : "five-hour.svg",
+          "name" : "five-hour"
+        },
+        {
+          "glass" : false,
+          "hidden" : false,
+          "image-name" : "weekly.svg",
+          "name" : "weekly"
+        },
+        {
+          "glass" : false,
+          "hidden" : false,
+          "image-name" : "tracks.svg",
+          "name" : "tracks"
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : [
+      "macOS"
+    ]
+  }
+}
