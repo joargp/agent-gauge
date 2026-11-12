@@ -46,7 +46,7 @@ struct ClaudeUsageCommand: Sendable {
         process.executableURL = executable
         process.arguments = ["-p", "/usage", "--output-format", "json", "--no-session-persistence"]
         process.environment = environment
-        process.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
+        process.currentDirectoryURL = workingDirectory()
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = output
         process.standardError = FileHandle.nullDevice
@@ -81,6 +81,20 @@ struct ClaudeUsageCommand: Sendable {
         _ = drained.wait(timeout: .now() + 2)
         guard process.terminationStatus == 0 else { return nil }
         return collected.data
+    }
+
+    /// An empty folder of our own. macOS attributes the child's file access to
+    /// Agent Gauge, so starting it in the home folder could make Claude Code's
+    /// startup trigger privacy prompts for Desktop, Documents or Downloads.
+    static func workingDirectory() -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("agent-gauge-claude", isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            return directory
+        } catch {
+            return FileManager.default.temporaryDirectory
+        }
     }
 
     private final class Collected: @unchecked Sendable {
