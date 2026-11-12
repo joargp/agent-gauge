@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Gauge · design</title>
+<style>
+  body { margin: 0; font: 16px/1.55 ui-sans-serif, system-ui, sans-serif; background: #f3f3f3; color: #1d1d1d; }
+  main { max-width: 860px; margin: 0 auto; padding: 56px 24px; }
+  h1 { font-size: 34px; letter-spacing: -.03em; margin: 0 0 8px; }
+  p.lead { color: #5f5f5f; margin: 0 0 32px; max-width: 62ch; }
+  a.card { display: grid; grid-template-columns: minmax(72px, 120px) 1fr; gap: 20px; align-items: center; padding: 20px; margin-bottom: 14px; background: #fff; border-radius: 16px; text-decoration: none; color: inherit; border: 1px solid #e4e4e4; transition: .15s; }
+  a.card:hover { border-color: #1d1d1d; transform: translateY(-2px); }
+  .sw { height: 80px; border-radius: 12px; }
+  h2 { margin: 0; font-size: 20px; }
+  .card p { margin: 4px 0 0; color: #5f5f5f; font-size: 14.5px; }
+  ol, ul { color: #5f5f5f; font-size: 14.5px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Agent Gauge: design</h1>
+  <p class="lead">Every version runs the same simulated readings and moments. Use the dark bar at the top of each page to jump to a moment. Click a ring in the menu bar to open its popover.</p>
+  <a class="card" href="current2.html"><div class="sw" style="background:linear-gradient(#151515 0 62%,transparent 62%) ,linear-gradient(90deg,#ffff3d 0 30%,#3a3a3a 30%) 0 75%/100% 10px no-repeat,#151515;border:10px solid #151515"></div><div><h2>0.2 · Current + Fable</h2><p>Current design plus a Fable row under the rings: Fable's own weekly cap, with a plain warning when it runs out before the weekly limit.</p></div></a>
+  <a class="card" href="current.html"><div class="sw" style="background:conic-gradient(from 0deg,#cc7d5e 0 75%,#3a3a3a 0),#151515;border:10px solid #151515"></div><div><h2>0 · Current (0.1.4)</h2><p>Baseline copy of the shipping app. One menu bar icon per agent with nested rings; each opens its own popover with two large rings.</p></div></a>
+  <h2 style="font-size:16px;margin:28px 0 8px">Revisions</h2>
+  <ul style="padding-left:18px">
+    <li><a href="current2.html">Current + Fable (0.2)</a> · 12 Nov 2026 · adds the Fable row; menu bar unchanged</li>
+    <li><a href="current.html">Current</a> · 12 Nov 2026 · baseline copy of 0.1.4</li>
+  </ul>
+  <p><strong>Try in each:</strong></p>
+  <ol>
+    <li><em>Fresh reading</em>: Claude, 75% of the 5-hour window and 28% of the week left.</li>
+    <li><em>Running low</em> (orange, under 25%) and <em>Critical</em> (red, under 10%).</li>
+    <li><em>No 5-hour limit</em>: Codex on a plan with only a weekly window.</li>
+    <li><em>Stale</em> and <em>Reset passed</em>: Claude Code hasn't run for hours.</li>
+    <li><em>Not connected</em>: no capture yet.</li>
+    <li><em>Codex error → refresh</em>: press Refresh to recover.</li>
+    <li>0.2 only: <em>Fable runs out first</em> and <em>No Fable cap</em> (a plan without one).</li>
+    <li>The gear menu: hide an agent, Launch at Login.</li>
+  </ol>
+</main>
+</body>
+</html>

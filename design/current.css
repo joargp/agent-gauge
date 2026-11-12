@@ -1,0 +1,137 @@
+/* 0 · Current (shipping 0.1.4)
+   Point of view: a faithful copy of today's app, as the baseline every new direction is compared to.
+   Structural answer: one menu bar item per agent (nested weekly and 5-hour rings); each opens its own
+   340pt popover with two large rings side by side.
+   Fonts: the macOS system font on purpose, because this copies the native app. Colors are sampled
+   from docs/popovers.png (macOS dark appearance). */
+
+/* A Mac menu bar app has no phone layout: hide the Desktop/Phone switch. */
+.mock-controls .seg:first-of-type { display: none; }
+
+.device {
+  --bg: #1d2433; --surface: #151515; --line: rgba(255,255,255,.1); --ink: #f5f5f7; --dim: rgba(235,235,245,.6);
+  --accent: #0a84ff; --on-accent: #fff; --ok: #32d74b; --warn: #ff453a;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; --body: var(--display); --radius: 12px;
+
+  --secondary: rgba(235,235,245,.6);
+  --tertiary: rgba(235,235,245,.36);
+  --quaternary: rgba(255,255,255,.1);
+  --ring-track: rgba(255,255,255,.26);
+  --ring-unknown: rgba(235,235,245,.6);
+  --claude-five: #cc7d5e;
+  --claude-weekly: #ffff3d;
+  --codex-five: #32d74b;
+  --codex-weekly: #33c2ff;
+  --low: #ff9f0a;
+  --critical: #ff453a;
+
+  padding: 0; display: block; color: var(--ink); font: 13px/1.3 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* desktop + wallpaper */
+.desktop { position: absolute; inset: 0; overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 85% 10%, #3b4f7a 0%, transparent 55%),
+    radial-gradient(90% 80% at 10% 100%, #5b3a5e 0%, transparent 60%),
+    linear-gradient(160deg, #1b2236, #0e1220 70%); }
+
+/* menu bar */
+.menubar { position: relative; z-index: 5; height: 26px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px;
+  background: rgba(20,22,30,.55); backdrop-filter: blur(30px) saturate(1.6); -webkit-backdrop-filter: blur(30px) saturate(1.6);
+  color: #fff; font-size: 13px; }
+.menus { display: flex; align-items: center; gap: 18px; }
+.menus .apple svg { width: 15px; height: 15px; display: block; margin: 0 4px 2px 6px; }
+.menus b { font-weight: 700; }
+.extras { display: flex; align-items: center; gap: 4px; height: 100%; }
+.extras .sys { display: grid; place-items: center; width: 30px; height: 22px; opacity: .95; }
+.extras .sys svg { width: 17px; height: 17px; }
+.extras .sys:first-of-type svg { width: 24px; }
+.extras .clock { padding: 0 6px 0 8px; font-variant-numeric: tabular-nums; }
+
+.status-item { display: grid; place-items: center; width: 32px; height: 22px; padding: 0; border: 0; border-radius: 5px; background: transparent; }
+.status-item:hover, .status-item.active { background: rgba(255,255,255,.2); }
+.status-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+.nested-rings { position: relative; width: 18px; height: 18px; display: block; }
+.nested-rings .ring { position: absolute; display: block; }
+.nested-rings .outer { left: 1.35px; top: 1.35px; }
+.nested-rings .inner { left: 4.32px; top: 4.32px; }
+.ring .track { stroke: var(--ring-track); }
+
+/* popover (MenuBarExtra window) */
+.popover { position: absolute; top: 31px; z-index: 10; width: 340px; padding: 18px;
+  display: flex; flex-direction: column; gap: 16px;
+  background: rgba(21,21,21,.97); border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.14) inset, 0 0 0 .5px #000, 0 18px 50px rgba(0,0,0,.55);
+  animation: drop .16s ease-out; }
+.popover[hidden] { display: none; }
+@keyframes drop { from { opacity: 0; transform: translateY(-4px); } }
+
+.pop-header { display: flex; align-items: center; gap: 10px; }
+.agent-icon svg { width: 22px; height: 22px; display: block; }
+.pop-title { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.pop-title strong { font-size: 13px; font-weight: 700; }
+.pop-title span { font-size: 10px; color: var(--secondary); }
+.badge { font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 999px; background: var(--quaternary); white-space: nowrap; }
+
+.rings { display: flex; align-items: flex-start; gap: 18px; }
+.usage-ring { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.dial { position: relative; width: 104px; height: 104px; margin-bottom: 9px; }
+.dial .ring { display: block; }
+.dial .arc { transition: stroke-dasharray .45s ease-in-out, stroke .45s; }
+.center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.pct { font: 600 25px/1 ui-rounded, "SF Pro Rounded", -apple-system, sans-serif; font-variant-numeric: tabular-nums; }
+.pct.none { color: var(--secondary); }
+.left { font-size: 10px; color: var(--secondary); margin-top: 1px; }
+.window-title { font-size: 11px; font-weight: 600; margin-bottom: 9px; }
+.caption, .detail { font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.caption { color: var(--secondary); }
+.detail { color: var(--tertiary); margin-top: 2px; }
+
+.data-age { display: flex; align-items: center; gap: 6px; font-size: 10px; font-variant-numeric: tabular-nums; min-height: 16px; }
+.data-age .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--low); flex: none; }
+.data-age[data-fresh=live] .dot { background: var(--ok); }
+.data-age[data-fresh=recent] .dot { background: var(--secondary); }
+.stale-hint { color: var(--tertiary); }
+.spinner { margin-left: auto; width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,.18); border-top-color: rgba(255,255,255,.75); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.notice { display: flex; gap: 6px; align-items: flex-start; padding: 10px; border-radius: 10px; font-size: 10px; line-height: 1.35; }
+.notice svg { width: 13px; height: 13px; flex: none; margin-top: 0; }
+.notice.setup { color: var(--low); background: rgba(255,159,10,.09); }
+.notice.error { color: var(--critical); background: rgba(255,69,58,.09); }
+
+.popover hr { border: 0; height: 1px; background: rgba(255,255,255,.1); margin: 0; }
+.privacy { display: flex; gap: 6px; align-items: flex-start; font-size: 10px; color: var(--secondary); line-height: 1.35; }
+.privacy svg { width: 12px; height: 12px; flex: none; margin-top: 0; }
+
+.pop-actions { display: flex; align-items: center; gap: 8px; }
+.pop-actions .spacer { flex: 1; }
+.btn { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border: 0; border-radius: 6px;
+  background: rgba(255,255,255,.12); color: var(--ink); font-size: 13px;
+  box-shadow: 0 .5px 0 rgba(255,255,255,.12) inset, 0 .5px 1px rgba(0,0,0,.4); }
+.btn svg { width: 13px; height: 13px; }
+.btn:active { background: rgba(255,255,255,.2); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn:focus-visible, .gear:focus-visible { outline: 3px solid rgba(10,132,255,.6); outline-offset: 1px; }
+.menu-anchor { position: relative; }
+.gear { display: grid; place-items: center; width: 24px; height: 22px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--ink); }
+.gear svg { width: 15px; height: 15px; }
+.gear[aria-expanded=true] { background: rgba(255,255,255,.12); }
+
+/* NSMenu */
+.menu { position: absolute; top: calc(100% + 4px); left: -6px; z-index: 20; min-width: 190px; padding: 5px;
+  background: rgba(40,40,42,.96); backdrop-filter: blur(20px); border-radius: 8px;
+  box-shadow: 0 0 0 .5px rgba(255,255,255,.18) inset, 0 0 0 .5px #000, 0 10px 30px rgba(0,0,0,.5); }
+.mi { display: flex; align-items: center; width: 100%; height: 22px; padding: 0 10px 0 4px; border: 0; border-radius: 4px; background: transparent; color: var(--ink); font-size: 13px; text-align: left; }
+.mi:hover:not(:disabled) { background: #0a64d6; }
+.mi:disabled { color: var(--tertiary); cursor: default; }
+.mi .tick { width: 18px; display: grid; place-items: center; }
+.mi .tick svg { width: 11px; height: 11px; }
+.menu .sep { height: 1px; margin: 5px 10px; background: rgba(255,255,255,.12); }
+
+/* toast: reads as a mockup note, not part of the app */
+.toast { top: 46px; padding: 9px 14px; border-radius: 8px; background: rgba(0,0,0,.8); color: #fff; font: 12px ui-monospace, Menlo, monospace; }
+
+/* no wireframe region labels */
+.device [data-region]::before { content: none; }

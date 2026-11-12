@@ -1,0 +1,59 @@
+/* Shared by all directions. Part 1 is the fixed mockup harness. Part 2 is a grey wireframe
+   placeholder so the unstyled template is legible; it is not a design. Each a/b/c.css sets its
+   own tokens and places and styles the product's regions. */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #d9d6d0; font-family: system-ui, sans-serif; }
+button { font: inherit; cursor: pointer; }
+input { font: inherit; }
+
+/* ===== 1. Harness (fixed) ===== */
+
+/* mockup controls: clearly not part of the design */
+.mock-controls { position: sticky; top: 0; z-index: 100; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 16px; background: #1b1b1b; color: #eee; font: 12px/1.2 ui-monospace, Menlo, monospace; }
+.mock-controls strong { font-weight: 600; margin-right: 6px; }
+.mock-controls .seg { display: inline-flex; flex-wrap: wrap; gap: 2px; background: #2c2c2c; border-radius: 8px; padding: 2px; }
+.mock-controls button { border: 0; background: transparent; color: #ccc; padding: 6px 10px; border-radius: 6px; font: inherit; }
+.mock-controls button:hover { background: #3a3a3a; color: #fff; }
+.mock-controls button.on { background: #f2f2f2; color: #111; }
+.mock-controls .others { margin-left: auto; }
+.mock-controls a { color: #9fd0ff; }
+.stage { display: grid; place-items: center; padding: 28px 16px 48px; min-height: calc(100vh - 46px); }
+@media (max-width: 700px) { .stage { padding: 12px 0 24px; } }
+
+/* device frame */
+.device { position: relative; overflow: hidden; width: min(1240px, 100%); height: min(780px, calc(100vh - 120px)); min-height: 560px; border-radius: 14px; box-shadow: 0 30px 80px -20px rgba(0,0,0,.35), 0 0 0 1px rgba(0,0,0,.08); }
+.device.vp-phone { width: min(390px, calc(100% - 24px)); height: min(800px, calc(100vh - 80px)); border-radius: 44px; padding-top: 44px; padding-bottom: 16px; /* status bar and home indicator */ box-shadow: 0 30px 80px -20px rgba(0,0,0,.45), 0 0 0 10px #161616, 0 0 0 11px #333; }
+
+/* toast */
+.toast { position: absolute; z-index: 40; left: 50%; top: 16px; transform: translate(-50%, -30px); opacity: 0; pointer-events: none; transition: .35s cubic-bezier(.2,.8,.2,1); white-space: nowrap; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.vp-phone .toast { top: 52px; white-space: normal; width: max-content; max-width: calc(100% - 40px); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* ===== 2. PLACEHOLDER wireframe (not a design) =====
+   Grey values and a plain layout so the empty template renders and you can check the
+   structure works before styling. Everything is wrapped in :where() so any rule in a skin wins.
+   Each skin must set every token below itself. Delete this whole part once all three skins
+   set their tokens and style their regions. */
+:where(.device) {
+  --bg: #f4f4f4; --surface: #fff; --line: #bbb; --ink: #222; --dim: #666;
+  --accent: #444; --on-accent: #fff; --ok: #4a7a4a; --warn: #a33;
+  --display: system-ui, sans-serif; --body: system-ui, sans-serif; --radius: 4px;
+  display: flex; flex-direction: column; gap: 16px; padding: 24px;
+  background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body);
+}
+:where(.device.vp-phone) { padding-left: 16px; padding-right: 16px; }
+:where(.device h1, .device h2) { font-family: var(--display); margin: 0 0 8px; }
+:where(.region) { position: relative; padding: 28px 16px 16px; background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius); }
+:where([data-region])::before { content: attr(data-region); position: absolute; top: 6px; left: 8px; font: 11px ui-monospace, Menlo, monospace; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+:where(.region.primary) { flex: 1; overflow: auto; min-height: 0; }
+:where(.device p) { color: var(--dim); }
+:where(.actions) { display: flex; flex-wrap: wrap; gap: 8px; }
+:where(.device button) { padding: 8px 14px; border: 1px solid var(--accent); border-radius: var(--radius); background: var(--accent); color: var(--on-accent); }
+:where(.device button:disabled) { opacity: .5; cursor: default; }
+:where(.device[data-phase=done] .status) { border-color: var(--ok); color: var(--ok); }
+:where(.device[data-phase=failed] .status) { border-color: var(--warn); color: var(--warn); }
+:where(.toast) { padding: 10px 16px; border-radius: var(--radius); background: var(--ink); color: var(--bg); }
+:where(.toast.warn) { background: var(--warn); color: #fff; }

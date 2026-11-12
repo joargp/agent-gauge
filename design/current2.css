@@ -1,0 +1,15 @@
+/* 0.2 · Current + Fable
+   Changes from Current: a Fable row under the two rings in the Claude popover, showing Fable's own
+   weekly cap ("up to 50% of your weekly limit"). Same thresholds as the rings: orange under 25%,
+   red under 10%. When Fable will run out before the weekly limit, one plain line says so.
+   The menu bar icon is unchanged. */
+
+.sublimit { display: flex; flex-direction: column; gap: 5px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,.05); }
+.sub-head { display: flex; align-items: baseline; justify-content: space-between; }
+.sub-head strong { font-size: 11px; font-weight: 600; }
+.sub-pct { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bar { height: 6px; border-radius: 3px; background: var(--ring-track); overflow: hidden; }
+.bar span { display: block; height: 100%; border-radius: 3px; transition: width .45s ease-in-out; }
+.sub-caption { font-size: 10px; color: var(--secondary); font-variant-numeric: tabular-nums; }
+.sub-note { font-size: 10px; color: var(--low); line-height: 1.35; }
+.sublimit[data-kind=present] .sub-pct { color: var(--ink); }
