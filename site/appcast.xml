@@ -15,5 +15,15 @@
       <description>&lt;h2&gt;Agent Gauge 0.1.5&lt;/h2&gt;&lt;p&gt;&lt;a href="https://github.com/joargp/agent-gauge/releases/tag/v0.1.5"&gt;Release notes&lt;/a&gt;&lt;/p&gt;</description>
       <enclosure url="https://github.com/joargp/agent-gauge/releases/download/v0.1.5/AgentGauge-0.1.5.zip" type="application/octet-stream" sparkle:edSignature="KirBHh1A3jMHremsWJXNQmg5a+im1uM+ANKTH98jcl92G6aGT36dYGAzOi+4yYd/l0K2+9h7QWER47lGaQBbCg==" length="2215466" />
     </item>
+    <item>
+      <title>Agent Gauge 0.1.6</title>
+      <pubDate>Thu, 12 Nov 2026 12:46:07 +0000</pubDate>
+      <sparkle:version>1006</sparkle:version>
+      <sparkle:shortVersionString>0.1.6</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:fullReleaseNotesLink>https://github.com/joargp/agent-gauge/releases/tag/v0.1.6</sparkle:fullReleaseNotesLink>
+      <description>&lt;h2&gt;Agent Gauge 0.1.6&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;A new app icon.&lt;/li&gt;&lt;li&gt;Download as a disk image: open it and drag Agent Gauge to Applications.&lt;/li&gt;&lt;li&gt;Offers to move itself to Applications when opened from somewhere else, so updates keep working.&lt;/li&gt;&lt;li&gt;The Fable limit refreshes when you open the Claude popover, and background checks use far less CPU.&lt;/li&gt;&lt;li&gt;An old Fable reading is hidden after 30 minutes of failed reads instead of looking fresh.&lt;/li&gt;&lt;li&gt;Connecting Claude Code works when your home folder&amp;#x27;s name has spaces.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;&lt;a href="https://github.com/joargp/agent-gauge/releases/tag/v0.1.6"&gt;Release notes&lt;/a&gt;&lt;/p&gt;</description>
+      <enclosure url="https://github.com/joargp/agent-gauge/releases/download/v0.1.6/AgentGauge-0.1.6.zip" type="application/octet-stream" sparkle:edSignature="0irpweI5GUpTVE3aYKe8SRHZxFFrHOAbepTRNQ4ET09EhF+Y+r+1GgF1satVcSfIcMyC/H/fImzNf12xnVR/BQ==" length="3871948" />
+    </item>
   </channel>
 </rss>
