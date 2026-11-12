@@ -57,7 +57,7 @@ enum GaugeProvider: String, CaseIterable, Identifiable {
 
     var privacyNote: String {
         switch self {
-        case .claude: "No credentials. Reads a local cache written by your Claude status line."
+        case .claude: "No credentials. Reads your Claude status line, and asks Claude Code for the Fable limit."
         case .codex: "Uses your local Codex login. Credentials stay with Codex."
         }
     }

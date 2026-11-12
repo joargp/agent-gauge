@@ -78,3 +78,44 @@ final class UsageTests: XCTestCase {
         UsageWindow(usedPercent: used, resetsAt: nil)
     }
 }
+
+final class SubLimitTests: XCTestCase {
+    private let now = Date(timeIntervalSince1970: 1_000_000)
+
+    private func snapshot(weeklyUsed: Double, fableUsed: Double?, fableResetsIn: TimeInterval = 3_600) -> UsageSnapshot {
+        UsageSnapshot(
+            fiveHourWindow: nil,
+            weeklyWindow: UsageWindow(usedPercent: weeklyUsed, resetsAt: now.addingTimeInterval(86_400)),
+            badge: nil,
+            capturedAt: now,
+            subLimit: fableUsed.map {
+                SubLimit(
+                    name: "Fable",
+                    window: UsageWindow(usedPercent: $0, resetsAt: now.addingTimeInterval(fableResetsIn))
+                )
+            }
+        )
+    }
+
+    func testRunsOutFirstWhenFableHasLessLeft() {
+        XCTAssertTrue(snapshot(weeklyUsed: 50, fableUsed: 70).subLimitRunsOutFirst(now: now))
+    }
+
+    func testDoesNotRunOutFirstWhenEqualOrHigher() {
+        XCTAssertFalse(snapshot(weeklyUsed: 73, fableUsed: 73).subLimitRunsOutFirst(now: now))
+        XCTAssertFalse(snapshot(weeklyUsed: 73, fableUsed: 40).subLimitRunsOutFirst(now: now))
+        XCTAssertFalse(snapshot(weeklyUsed: 73.2, fableUsed: 72.8).subLimitRunsOutFirst(now: now))
+    }
+
+    func testNoSubLimitMeansNothingToShow() {
+        let none = snapshot(weeklyUsed: 50, fableUsed: nil)
+        XCTAssertNil(none.currentSubLimit(now: now))
+        XCTAssertFalse(none.subLimitRunsOutFirst(now: now))
+    }
+
+    func testRolledOverSubLimitIsHidden() {
+        let rolled = snapshot(weeklyUsed: 10, fableUsed: 90, fableResetsIn: -1)
+        XCTAssertNil(rolled.currentSubLimit(now: now))
+        XCTAssertFalse(rolled.subLimitRunsOutFirst(now: now))
+    }
+}

@@ -59,6 +59,17 @@ public enum WindowDisplayState: Equatable, Sendable {
     case noLimit
 }
 
+/// An extra weekly limit that applies to one model, such as Claude's Fable.
+public struct SubLimit: Equatable, Sendable {
+    public let name: String
+    public let window: UsageWindow
+
+    public init(name: String, window: UsageWindow) {
+        self.name = name
+        self.window = window
+    }
+}
+
 public struct UsageSnapshot: Equatable, Sendable {
     public let fiveHourWindow: UsageWindow?
     public let weeklyWindow: UsageWindow?
@@ -69,19 +80,52 @@ public struct UsageSnapshot: Equatable, Sendable {
     /// True when the provider reports every window the plan has, so an absent
     /// window means no such limit rather than a reading still to come.
     public let absentWindowsHaveNoLimit: Bool
+    /// Optional extra weekly limit for one model. Nil when the plan has none
+    /// or it could not be read.
+    public let subLimit: SubLimit?
 
     public init(
         fiveHourWindow: UsageWindow?,
         weeklyWindow: UsageWindow?,
         badge: String?,
         capturedAt: Date,
-        absentWindowsHaveNoLimit: Bool = false
+        absentWindowsHaveNoLimit: Bool = false,
+        subLimit: SubLimit? = nil
     ) {
         self.fiveHourWindow = fiveHourWindow
         self.weeklyWindow = weeklyWindow
         self.badge = badge
         self.capturedAt = capturedAt
         self.absentWindowsHaveNoLimit = absentWindowsHaveNoLimit
+        self.subLimit = subLimit
+    }
+
+    public func withSubLimit(_ subLimit: SubLimit?) -> UsageSnapshot {
+        UsageSnapshot(
+            fiveHourWindow: fiveHourWindow,
+            weeklyWindow: weeklyWindow,
+            badge: badge,
+            capturedAt: capturedAt,
+            absentWindowsHaveNoLimit: absentWindowsHaveNoLimit,
+            subLimit: subLimit
+        )
+    }
+
+    /// The sub-limit while its window is current, or nil when there is none
+    /// or its reset has passed.
+    public func currentSubLimit(now: Date = Date()) -> SubLimit? {
+        guard let subLimit, !subLimit.window.isRolledOver(now: now) else { return nil }
+        return subLimit
+    }
+
+    /// True when the sub-limit has less left than the weekly limit, so that
+    /// model stops working while others still do.
+    public func subLimitRunsOutFirst(now: Date = Date()) -> Bool {
+        guard let subLimit = currentSubLimit(now: now),
+              case .present(let weekly) = weeklyState(now: now)
+        else { return false }
+        return UsageFormatting.wholePercent(subLimit.window.remainingPercent)
+            < UsageFormatting.wholePercent(weekly.remainingPercent)
     }
 
     public func freshness(now: Date = Date()) -> DataFreshness {

@@ -31,7 +31,9 @@ xattr -dr com.apple.quarantine "/Applications/Agent Gauge.app"
 
 ### Privacy and authentication
 
-For Claude, Agent Gauge does **not** read your macOS Keychain, Claude OAuth token, prompts, transcripts, source code, or session history, and it makes no network requests.
+For Claude, Agent Gauge does **not** read your macOS Keychain, Claude OAuth token, prompts, transcripts, source code, or session history, and it makes no network requests of its own.
+
+The one exception is the Fable limit (see below). For that, Agent Gauge asks your installed Claude Code to run `claude /usage`. Claude Code contacts Anthropic with its own login. Agent Gauge only sees the text it prints.
 
 Claude Code officially supplies live subscription-rate-limit metadata to configured statusline commands. Agent Gauge installs a small local capture binary as that command. The helper receives the full statusline JSON on stdin, decodes only the fields below, and never persists the raw input:
 
@@ -58,7 +60,13 @@ The cache updates while an interactive Claude Code session renders its status li
 
 If a cached `resets_at` passes while Claude Code is idle, Agent Gauge stops showing the old percentage and marks that window **No recent data · Start Claude Code to refresh**.
 
-The Refresh button re-reads the cache and installation state. Claude Code currently exposes no non-interactive `usage` command, so the app cannot force the CLI to produce a new server-side reading.
+The Refresh button re-reads the cache and installation state. The 5-hour and weekly windows only change when Claude Code renders its status line, so Refresh cannot force a new reading of those.
+
+### Fable limit
+
+Some plans have a separate weekly limit for Fable. Claude Code's status line does not include it, so Agent Gauge runs `claude -p "/usage" --output-format json --no-session-persistence` and reads the `Current week (Fable)` line. That command is local, makes no model call and costs nothing. It runs with `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` removed, because with them set Claude Code prints API stats instead of subscription limits.
+
+It runs at most every 5 minutes, and when you press **Refresh** (never more than once a minute, and never twice at once). The Claude popover then shows a Fable row between the rings and the update time. If Claude Code is missing, slow, or your plan has no Fable limit, the row is simply not shown. The CLI is found through `CLAUDE_GAUGE_CLAUDE_PATH`, `PATH`, or common install folders such as `~/.local/bin`.
 
 ### Existing custom status line
 

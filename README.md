@@ -26,7 +26,7 @@ cd agent-gauge
 
 ## Privacy
 
-- **Claude Code:** reads the usage numbers Claude Code passes to its status line. No Keychain access, no tokens, no network requests.
+- **Claude Code:** reads the usage numbers Claude Code passes to its status line. Agent Gauge itself reads no Keychain and no tokens. To show Claude's Fable limit, it also asks your installed Claude Code (`claude /usage`), which contacts Anthropic with its own login.
 - **Codex:** asks your installed Codex CLI. Your login and tokens stay with Codex.
 
 Prompts, transcripts and code are never read.

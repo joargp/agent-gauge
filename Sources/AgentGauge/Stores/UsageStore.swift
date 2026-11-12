@@ -46,7 +46,7 @@ final class UsageStore: ObservableObject {
         refreshLoop = nil
     }
 
-    func refresh() async {
+    func refresh(userInitiated: Bool = false) async {
         guard !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
@@ -54,7 +54,7 @@ final class UsageStore: ObservableObject {
         var setupMessage = await provider.setupGuidance()
 
         do {
-            usage = try await provider.readUsage()
+            usage = try await provider.readUsage(userInitiated: userInitiated)
             errorMessage = nil
         } catch let error as any UsageError where error.needsSetup {
             // A setup or waiting state is guidance, not an error.

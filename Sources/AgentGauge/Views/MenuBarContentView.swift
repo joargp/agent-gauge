@@ -26,6 +26,8 @@ struct MenuBarContentView: View {
                 )
             }
 
+            subLimitRow
+
             dataAgeRow
 
             if let setupMessage = store.setupMessage {
@@ -57,7 +59,7 @@ struct MenuBarContentView: View {
 
             HStack {
                 Button {
-                    Task { await store.refresh() }
+                    Task { await store.refresh(userInitiated: true) }
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
@@ -101,6 +103,22 @@ struct MenuBarContentView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(.quaternary, in: Capsule())
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var subLimitRow: some View {
+        if store.usage?.subLimit != nil {
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                if let usage = store.usage, let subLimit = usage.currentSubLimit(now: context.date) {
+                    SubLimitRowView(
+                        subLimit: subLimit,
+                        runsOutFirst: usage.subLimitRunsOutFirst(now: context.date),
+                        tint: provider.weeklyTint,
+                        now: context.date
+                    )
+                }
             }
         }
     }
