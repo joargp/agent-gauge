@@ -5,13 +5,17 @@ public enum UsageCacheDecoder {
     private static let maximumTimestamp: TimeInterval = 10_000_000_000
 
     public static func decode(_ data: Data) throws -> UsageSnapshot {
-        let payload = try decodePayload(data)
+        try snapshot(from: decodePayload(data))
+    }
 
-        return UsageSnapshot(
+    static func snapshot(from payload: UsageCachePayload) throws -> UsageSnapshot {
+        UsageSnapshot(
             fiveHourWindow: try payload.fiveHour.map(window),
             weeklyWindow: try payload.sevenDay.map(window),
             badge: payload.claudeCodeVersion.map { "Claude Code \($0)" },
-            capturedAt: Date(timeIntervalSince1970: payload.capturedAt)
+            capturedAt: Date(timeIntervalSince1970: payload.capturedAt),
+            fiveHourCapturedAt: payload.fiveHour?.capturedAt.map(Date.init(timeIntervalSince1970:)),
+            weeklyCapturedAt: payload.sevenDay?.capturedAt.map(Date.init(timeIntervalSince1970:))
         )
     }
 
@@ -36,7 +40,8 @@ public enum UsageCacheDecoder {
 
     private static func window(_ cached: CacheWindow) throws -> UsageWindow {
         guard cached.usedPercentage.isFinite,
-              cached.resetsAt.map(validTimestamp) ?? true
+              cached.resetsAt.map(validTimestamp) ?? true,
+              cached.capturedAt.map(validTimestamp) ?? true
         else {
             throw ClaudeUsageError.invalidCache
         }

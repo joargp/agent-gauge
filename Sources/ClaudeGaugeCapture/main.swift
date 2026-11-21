@@ -94,7 +94,8 @@ private func runStatusline(locations: CacheLocations) -> Never {
             let outcome = try CaptureRunner.run(
                 input: input,
                 existingCache: existing,
-                now: now
+                now: now,
+                configDir: ClaudeConfigProfile.identifier(homeDirectory: locations.homeDirectory)
             )
             if let cacheData = outcome.cacheData {
                 try cacheData.write(to: locations.cacheFile, options: .atomic)

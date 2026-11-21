@@ -27,7 +27,8 @@ public enum CaptureRunner {
     public static func run(
         input: Data,
         existingCache: Data?,
-        now: Date = Date()
+        now: Date = Date(),
+        configDir: String? = nil
     ) throws -> CaptureOutcome {
         let capture: StatuslineCaptureDecoder.Capture
         do {
@@ -45,28 +46,40 @@ public enum CaptureRunner {
         // Claude Code drops an individual window once its resets_at passes.
         // Preserve the last-known window until a replacement arrives so the
         // app can recognize that rollover and hide the stale percentage.
-        let previousPayload = existingCache.flatMap {
+        var previousPayload = existingCache.flatMap {
             try? UsageCacheDecoder.decodePayload($0)
         }
         let roundedAt = (
             now.timeIntervalSince1970 / capturedAtRounding
         ).rounded(.down) * capturedAtRounding
 
+        // Choose the profile once for the whole snapshot. A legacy cache
+        // cannot lend windows to a known profile. Two explicit OAuth
+        // captures may be from different accounts even with the same marker.
+        if let previous = previousPayload,
+           !ClaudeConfigProfile.identifiersMatch(previous.configDir, configDir)
+            || ClaudeConfigProfile.identifiersMatch(configDir, ClaudeConfigProfile.explicitOAuth) {
+            guard roundedAt >= previous.capturedAt,
+                  capture.fiveHour != nil || capture.sevenDay != nil else {
+                return CaptureOutcome(cacheData: nil, statusLineText: statusLineText)
+            }
+            previousPayload = nil
+        }
+
         let payload = UsageCachePayload(
             fiveHour: mergedWindow(
-                incoming: capture.fiveHour.map(CacheWindow.init),
+                incoming: capture.fiveHour.map { CacheWindow($0, capturedAt: roundedAt) },
                 previous: previousPayload?.fiveHour,
-                incomingCapturedAt: roundedAt,
                 previousCapturedAt: previousPayload?.capturedAt
             ),
             sevenDay: mergedWindow(
-                incoming: capture.sevenDay.map(CacheWindow.init),
+                incoming: capture.sevenDay.map { CacheWindow($0, capturedAt: roundedAt) },
                 previous: previousPayload?.sevenDay,
-                incomingCapturedAt: roundedAt,
                 previousCapturedAt: previousPayload?.capturedAt
             ),
             capturedAt: max(roundedAt, previousPayload?.capturedAt ?? roundedAt),
-            claudeCodeVersion: capture.claudeCodeVersion ?? previousPayload?.claudeCodeVersion
+            claudeCodeVersion: capture.claudeCodeVersion ?? previousPayload?.claudeCodeVersion,
+            configDir: configDir
         )
 
         let encoded = try encode(payload)
@@ -120,11 +133,13 @@ public enum CaptureRunner {
     private static func mergedWindow(
         incoming: CacheWindow?,
         previous: CacheWindow?,
-        incomingCapturedAt: TimeInterval,
         previousCapturedAt: TimeInterval?
     ) -> CacheWindow? {
+        guard var previous else { return incoming }
+        // Older helpers stored only a shared timestamp. Preserve it when
+        // migrating a window that this capture does not replace.
+        previous.capturedAt = previous.capturedAt ?? previousCapturedAt
         guard let incoming else { return previous }
-        guard let previous else { return incoming }
 
         switch (incoming.resetsAt, previous.resetsAt) {
         case let (incomingReset?, previousReset?):
@@ -138,7 +153,7 @@ public enum CaptureRunner {
             break
         }
 
-        guard incomingCapturedAt >= (previousCapturedAt ?? 0) else {
+        guard (incoming.capturedAt ?? 0) >= (previous.capturedAt ?? 0) else {
             return previous
         }
         return incoming

@@ -2,7 +2,7 @@ import Darwin
 import Foundation
 import GaugeCore
 
-/// Runs `claude -p "/usage"` and reads the Fable window from it. The command
+/// Runs `claude -p "/usage"` and reads the weekly windows from it. The command
 /// is local: it makes no model call and costs nothing.
 struct ClaudeUsageCommand: Sendable {
     private let resolver: ClaudeExecutableResolver
@@ -14,8 +14,29 @@ struct ClaudeUsageCommand: Sendable {
         self.timeout = timeout
     }
 
-    func fetch() async -> SubLimitReader.Outcome {
-        guard let executable = resolver.resolve() else { return .failed }
+    /// The Claude profile whose login `/usage` reports on. Nil when the
+    /// app's own profile cannot be reproduced for the CLI, which then never
+    /// runs rather than reading another login.
+    var configProfile: String? { resolver.configProfile }
+
+    func fetchUsage() async -> SubLimitReader.Outcome {
+        guard let text = await fetchText() else { return .failed }
+        return Self.parseUsage(text, now: Date())
+    }
+
+    static func parseUsage(_ text: String, now: Date) -> SubLimitReader.Outcome {
+        let fable = ClaudeUsageTextParser.parseFable(text, now: now)
+        if let weekly = ClaudeUsageTextParser.parseWeekly(text, now: now) {
+            return .reading(weekly: weekly, fable: fable)
+        }
+        if let fable {
+            return .found(fable)
+        }
+        return .absent
+    }
+
+    private func fetchText() async -> String? {
+        guard resolver.configProfile != nil, let executable = resolver.resolve() else { return nil }
         let environment = resolver.processEnvironment(for: executable)
         let timeout = timeout
 
@@ -23,15 +44,11 @@ struct ClaudeUsageCommand: Sendable {
             DispatchQueue.global(qos: .utility).async {
                 guard let output = Self.run(
                     executable: executable, environment: environment, timeout: timeout
-                ), let text = ClaudeUsageTextParser.resultText(fromJSON: output) else {
-                    continuation.resume(returning: .failed)
+                ) else {
+                    continuation.resume(returning: nil)
                     return
                 }
-                if let fable = ClaudeUsageTextParser.parseFable(text) {
-                    continuation.resume(returning: .found(fable))
-                } else {
-                    continuation.resume(returning: .absent)
-                }
+                continuation.resume(returning: ClaudeUsageTextParser.resultText(fromJSON: output))
             }
         }
     }

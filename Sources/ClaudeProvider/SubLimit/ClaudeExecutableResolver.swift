@@ -4,13 +4,20 @@ import Foundation
 struct ClaudeExecutableResolver: Sendable {
     private let environment: [String: String]
     private let homeDirectory: URL
+    /// The Claude profile `/usage` reports on, or nil when this app cannot
+    /// run the CLI under the same profile (see `ClaudeConfigProfile`).
+    let configProfile: String?
 
     init(
-        environment: [String: String] = ProcessInfo.processInfo.environment,
+        environment: [String: String]? = nil,
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
     ) {
-        self.environment = environment
+        let keychainEnvironment = ClaudeConfigProfile.keychainEnvironment(environment)
+        self.environment = keychainEnvironment ?? [:]
         self.homeDirectory = homeDirectory
+        self.configProfile = keychainEnvironment.flatMap {
+            ClaudeConfigProfile.verifiableIdentifier(environment: $0, homeDirectory: homeDirectory)
+        }
     }
 
     func resolve() -> URL? {
@@ -48,6 +55,17 @@ struct ClaudeExecutableResolver: Sendable {
         var child = environment
         child.removeValue(forKey: "ANTHROPIC_API_KEY")
         child.removeValue(forKey: "ANTHROPIC_AUTH_TOKEN")
+        // Pass absolute overrides exactly as written: Claude Code names the
+        // Keychain item after the literal value. Leave them unset when the
+        // app has none, which selects a different Keychain item. Callers must
+        // not run the CLI for a relative override (`configProfile` is nil).
+        for key in [ClaudeConfigProfile.environmentKey, ClaudeConfigProfile.secureStorageKey] {
+            if case .absolute(let literal) = ClaudeConfigProfile.Setting(environment, key: key) {
+                child[key] = literal
+            } else {
+                child.removeValue(forKey: key)
+            }
+        }
 
         let directories = [
             executable.deletingLastPathComponent().path,

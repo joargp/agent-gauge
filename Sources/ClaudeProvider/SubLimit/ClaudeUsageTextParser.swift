@@ -12,6 +12,26 @@ public enum ClaudeUsageTextParser {
         return result
     }
 
+    /// Only the subscription-wide weekly window, never a model-specific cap.
+    static func parseWeekly(_ text: String, now: Date) -> UsageWindow? {
+        // A yearless reset can be inferred as next year's date. Only a
+        // reset in the next seven days is evidence about the current week.
+        let latestReset = now.addingTimeInterval(7 * 24 * 60 * 60)
+        for rawLine in text.split(whereSeparator: \.isNewline) {
+            let line = String(rawLine)
+            guard let match = lineExpression.firstMatch(
+                in: line, range: NSRange(line.startIndex..., in: line)
+            ), capture(1, in: match, of: line)?.lowercased() == "all models",
+               let used = capture(2, in: match, of: line).flatMap(Double.init),
+               (0...100).contains(used),
+               let reset = capture(3, in: match, of: line),
+               let resetsAt = parseReset(reset, now: now, weeklyThrough: latestReset)
+            else { continue }
+            return UsageWindow(usedPercent: used, resetsAt: resetsAt)
+        }
+        return nil
+    }
+
     /// The Fable weekly window from the `/usage` text, or nil when the text
     /// has no such line (a plan without a Fable cap, or API-key output).
     public static func parseFable(_ text: String, now: Date = Date()) -> SubLimit? {
@@ -37,7 +57,8 @@ public enum ClaudeUsageTextParser {
 
     /// Parses "Nov 12 at 8pm", "Nov 12 at 12:20pm (Europe/Oslo)" and
     /// "Nov 12, 2027 at 8pm". Without a year, the next matching date is used.
-    static func parseReset(_ text: String, now: Date) -> Date? {
+    /// An all-models reset must also be unique and within the weekly horizon.
+    static func parseReset(_ text: String, now: Date, weeklyThrough latestReset: Date? = nil) -> Date? {
         guard let match = resetExpression.firstMatch(
             in: text, range: NSRange(text.startIndex..., in: text)
         ),
@@ -55,19 +76,41 @@ public enum ClaudeUsageTextParser {
         if meridiem == "pm" { hour += 12 }
 
         var calendar = Calendar(identifier: .gregorian)
-        if let identifier = capture(7, in: match, of: text),
-           let zone = TimeZone(identifier: identifier) {
-            calendar.timeZone = zone
+        if let identifier = capture(7, in: match, of: text) {
+            if let zone = TimeZone(identifier: identifier) {
+                calendar.timeZone = zone
+            } else if latestReset != nil {
+                return nil
+            }
         }
 
         let explicitYear = capture(3, in: match, of: text).flatMap(Int.init)
         let currentYear = calendar.component(.year, from: now)
 
-        func date(year: Int) -> Date? {
-            let components = DateComponents(
+        func components(year: Int) -> DateComponents {
+            DateComponents(
                 year: year, month: month, day: day, hour: hour, minute: minute
             )
-            guard let date = calendar.date(from: components),
+        }
+
+        if let latestReset {
+            // Try next year independently so a yearless January reset can
+            // roll over even if that wall time did not exist this year.
+            for year in explicitYear.map({ [$0] }) ?? [currentYear, currentYear + 1] {
+                var requested = components(year: year)
+                requested.second = 0
+                guard let date = calendar.date(from: requested),
+                      date > now, date <= latestReset,
+                      calendar.date(date, matchesComponents: requested),
+                      !isRepeatedLocalTime(date, in: calendar.timeZone)
+                else { continue }
+                return date
+            }
+            return nil
+        }
+
+        func date(year: Int) -> Date? {
+            guard let date = calendar.date(from: components(year: year)),
                   calendar.component(.month, from: date) == month,
                   calendar.component(.day, from: date) == day
             else { return nil }
@@ -81,6 +124,25 @@ public enum ClaudeUsageTextParser {
             return date(year: currentYear + 1) ?? thisYear
         }
         return thisYear
+    }
+
+    private static func isRepeatedLocalTime(_ date: Date, in zone: TimeZone) -> Bool {
+        let offset = zone.secondsFromGMT(for: date)
+        // The same wall time satisfies date + offset == other + otherOffset.
+        // Two days on each side cover even changes at the date line.
+        let radius: TimeInterval = 2 * 24 * 60 * 60
+        var probe = date.addingTimeInterval(-radius)
+        let end = date.addingTimeInterval(radius)
+        while true {
+            let otherOffset = zone.secondsFromGMT(for: probe)
+            if otherOffset != offset {
+                let other = date.addingTimeInterval(TimeInterval(offset - otherOffset))
+                if zone.secondsFromGMT(for: other) == otherOffset { return true }
+            }
+            guard let transition = zone.nextDaylightSavingTimeTransition(after: probe), transition <= end
+            else { return false }
+            probe = transition
+        }
     }
 
     private static func capture(_ index: Int, in match: NSTextCheckingResult, of text: String) -> String? {

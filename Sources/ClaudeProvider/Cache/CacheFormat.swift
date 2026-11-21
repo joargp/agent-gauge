@@ -33,28 +33,33 @@ public struct CacheLocations: Sendable {
 }
 
 /// Cache payload: what the capture binary writes and the app reads.
-struct UsageCachePayload: Codable, Equatable, Sendable {
+struct UsageCachePayload: Codable, Sendable {
     var fiveHour: CacheWindow?
     var sevenDay: CacheWindow?
     /// Epoch seconds when the statusline capture ran (rounded by the writer).
     var capturedAt: TimeInterval
     var claudeCodeVersion: String?
+    /// Nil in caches written before the helper recorded the Claude profile.
+    var configDir: String?
 
     enum CodingKeys: String, CodingKey {
         case fiveHour = "five_hour"
         case sevenDay = "seven_day"
         case capturedAt = "captured_at"
         case claudeCodeVersion = "claude_code_version"
+        case configDir = "config_dir"
     }
 }
 
 struct CacheWindow: Codable, Equatable, Sendable {
     var usedPercentage: Double
     var resetsAt: TimeInterval?
+    var capturedAt: TimeInterval?
 
     enum CodingKeys: String, CodingKey {
         case usedPercentage = "used_percentage"
         case resetsAt = "resets_at"
+        case capturedAt = "captured_at"
     }
 
     init(usedPercentage: Double, resetsAt: TimeInterval?) {
@@ -62,10 +67,11 @@ struct CacheWindow: Codable, Equatable, Sendable {
         self.resetsAt = resetsAt
     }
 
-    init(_ window: UsageWindow) {
+    init(_ window: UsageWindow, capturedAt: TimeInterval) {
         self.init(
             usedPercentage: window.usedPercent,
             resetsAt: window.resetsAt?.timeIntervalSince1970
         )
+        self.capturedAt = capturedAt
     }
 }

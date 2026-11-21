@@ -62,6 +62,7 @@ final class UsageTests: XCTestCase {
             capturedAt: now
         )
         XCTAssertEqual(rolledSnapshot.fiveHourState(now: now), .rolledOver)
+        XCTAssertEqual(rolledSnapshot.displayCapturedAt(now: now), now, "Ordinary rollover keeps the capture age")
 
         let completeSnapshot = UsageSnapshot(
             fiveHourWindow: nil,
@@ -72,6 +73,26 @@ final class UsageTests: XCTestCase {
         )
         XCTAssertEqual(completeSnapshot.fiveHourState(now: now), .noLimit)
         XCTAssertEqual(completeSnapshot.weeklyState(now: now), .present(fresh))
+    }
+
+    func testRejectedWeeklyWithFableUsesOnlyCurrentMainWindowAge() {
+        let now = Date(timeIntervalSince1970: 5_000)
+        let fiveHourAt = now.addingTimeInterval(-600)
+        let fiveHourReset = now.addingTimeInterval(60)
+        let fable = SubLimit(name: "Fable", window: UsageWindow(usedPercent: 30, resetsAt: nil))
+        let snapshot = UsageSnapshot(
+            fiveHourWindow: UsageWindow(usedPercent: 20, resetsAt: fiveHourReset),
+            weeklyWindow: nil,
+            badge: nil,
+            capturedAt: now,
+            subLimit: fable,
+            fiveHourCapturedAt: fiveHourAt,
+            weeklyUnavailable: true
+        )
+
+        XCTAssertEqual(snapshot.displayCapturedAt(now: now), fiveHourAt)
+        XCTAssertEqual(snapshot.currentSubLimit(now: fiveHourReset), fable)
+        XCTAssertNil(snapshot.displayCapturedAt(now: fiveHourReset))
     }
 
     private func makeWindow(used: Double) -> UsageWindow {

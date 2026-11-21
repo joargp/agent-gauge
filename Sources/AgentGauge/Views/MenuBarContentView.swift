@@ -165,10 +165,12 @@ struct MenuBarContentView: View {
     }
 
     private func dataAgeDescription(freshness: DataFreshness?, now: Date) -> String {
+        let capturedAt = store.usage?.displayCapturedAt(now: now)
+        if capturedAt == nil, store.usage != nil { return "Update time unavailable" }
         if freshness == .stale, provider.describesAgeAsCapture {
-            return UsageFormatting.lastCaptureDescription(store.usage?.capturedAt, now: now)
+            return UsageFormatting.lastCaptureDescription(capturedAt, now: now)
         }
-        return UsageFormatting.lastUpdatedDescription(store.usage?.capturedAt, now: now)
+        return UsageFormatting.lastUpdatedDescription(capturedAt, now: now)
     }
 
     private func freshnessDotColor(_ freshness: DataFreshness?) -> Color {

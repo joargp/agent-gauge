@@ -48,14 +48,15 @@ Agent Gauge reads its update feed from `https://joargp.github.io/agent-gauge/app
 
 For Claude, Agent Gauge does **not** read your macOS Keychain, Claude OAuth token, prompts, transcripts, source code, or session history, and it makes no network requests of its own.
 
-The one exception is the Fable limit (see below). For that, Agent Gauge asks your installed Claude Code to run `claude /usage`. Claude Code contacts Anthropic with its own login. Agent Gauge only sees the text it prints.
+The one exception is the weekly check (see below). For that, Agent Gauge asks your installed Claude Code to run `claude /usage`, which reports the weekly limit for all models and, on plans that have one, the Fable limit. Claude Code contacts Anthropic with its own login. Agent Gauge only sees the text it prints.
 
 Claude Code officially supplies live subscription-rate-limit metadata to configured statusline commands. Agent Gauge installs a small local capture binary as that command. The helper receives the full statusline JSON on stdin, decodes only the fields below, and never persists the raw input:
 
 - 5-hour and 7-day percentages used
 - their reset timestamps
-- the capture timestamp
+- when each window was captured
 - the Claude Code version
+- which Claude profile the session used (see [Claude profiles](#claude-profiles))
 
 It writes that metadata atomically to:
 
@@ -75,13 +76,25 @@ The cache updates while an interactive Claude Code session renders its status li
 
 If a cached `resets_at` passes while Claude Code is idle, Agent Gauge stops showing the old percentage and marks that window **No recent data · Start Claude Code to refresh**.
 
-The Refresh button re-reads the cache and installation state. The 5-hour and weekly windows only change when Claude Code renders its status line, so Refresh cannot force a new reading of those.
+The Refresh button re-reads the cache and installation state, and checks the weekly limits with `/usage` (see below). The 5-hour window only changes when Claude Code renders its status line, so Refresh cannot force a new 5-hour reading.
 
-### Fable limit
+The age in the popover belongs to the oldest current reading in the two main rings. Each ring keeps its own age: the 5-hour window's is its last status-line capture, and the weekly window's is the last `/usage` check when that check supplied the value, or otherwise its own status-line capture. If a weekly reading was rejected and neither ring has a current reading, the update time is unavailable even if Fable is shown.
 
-Some plans have a separate weekly limit for Fable. Claude Code's status line does not include it, so Agent Gauge runs `claude -p "/usage" --output-format json --no-session-persistence` and reads the `Current week (Fable)` line. That command is local, makes no model call and costs nothing. It runs with `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` removed, because with them set Claude Code prints API stats instead of subscription limits.
+### Weekly and Fable checks
 
-It is read when you open the Claude popover and when you press **Refresh**, never more than once a minute and never twice at once. The last value shows while a read runs, and the number updates in place when it finishes. Each run starts the whole Claude CLI, so background reads are rare: at most every 15 minutes, and only after the status line has captured new usage on this Mac. The Claude popover then shows a Fable row between the rings and the update time. If Claude Code is missing or your plan has no Fable limit, the row is simply not shown. A run that fails or takes longer than 20 seconds keeps the last reading, but after 30 minutes of failures the row is hidden rather than showing an old value. The CLI is found through `CLAUDE_GAUGE_CLAUDE_PATH`, `PATH`, or common install folders such as `~/.local/bin`.
+An idle Claude Code session keeps redrawing the weekly percentage it last received, so the status line can repeat an old weekly value with a fresh capture time. Some plans also have a separate weekly limit for Fable, which the status line does not include. For both, Agent Gauge runs `claude -p "/usage" --output-format json --no-session-persistence` and reads the `Current week (all models)` line and, if present, the `Current week (Fable)` line. That command is local, makes no model call and costs nothing. It runs with `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` removed, because with them set Claude Code prints API stats instead of subscription limits. The CLI is found through `CLAUDE_GAUGE_CLAUDE_PATH`, `PATH`, or common install folders such as `~/.local/bin`.
+
+**When it runs.** When you open the Claude popover and when you press **Refresh**, never more than once a minute and never twice at once. The last values show while a check runs, and the numbers update in place when it finishes. Each run starts the whole Claude CLI, so background checks are rare: at most every 15 minutes, and only after the status line has captured new usage on this Mac. They can run once a minute, still only after new usage, while a current status-line weekly reading differs from the last check and that reading has not been checked yet, after the checked weekly window has reset, or while the weekly ring reads **No recent data** because a check contradicted the status line's reading and no checked value replaces it (see below). Once the new week is verified, a preserved status-line row from the old week does not count as a mismatch.
+
+**Which weekly value shows.** A successful check replaces the status line's weekly reading. Agent Gauge remembers each status-line reading a check contradicted, so an idle session redrawing it later does not make it look new. A check only contradicts readings it is known to have come after. Claude Code asks Anthropic for the usage at some moment while `/usage` runs, which can take several seconds, and Agent Gauge cannot see when. A reading captured while the check ran may report a newer value than the one `/usage` got, whether higher (new usage) or lower (a correction), so it is never contradicted by that check. The helper also rounds capture times down to 10 seconds, so only a reading stamped at least 10 seconds before a check started, or read by Agent Gauge before starting it, is known to be older. Such a reading counts as contradicted if it differs. The tradeoff: an idle session redrawing an old value while a check runs is not caught by that check. The next check reads it before starting and contradicts it then, but if that next check fails, the old value can show in the meantime. Contradicting it right away would instead hide genuine corrections. A contradicted reading stays contradicted through failed checks and checks without a current all-models line, until a later check agrees with it or its own weekly window resets. A weekly row that has already reset when the check finishes neither adds nor clears rejections. Fable is still shown if its own row is current.
+
+To verify the current weekly reading, the all-models row must give a reset time in the next seven days. An expired or implausibly distant reset counts as a missing all-models row, without affecting Fable.
+
+If a contradicted reading has no reset time, Agent Gauge keeps the rejection for one week after the last check known to contradict it, unless a later check agrees sooner. Redraws and failed or incomplete checks do not extend that deadline.
+
+**When a check fails.** A run that fails or takes longer than 20 seconds keeps the last checked values. If the status line meanwhile reports a weekly reading that may have been captured after the last successful check started (by the same rounding rule) and that no check contradicted, that reading shows instead, since it may be newer than the value `/usage` got. After 30 minutes of failures, the checked weekly value and the Fable row are dropped rather than showing old values. With no checked weekly value left (after those 30 minutes, once the checked window has reset, or when `/usage` printed no all-models line), the status line's weekly reading shows as before, unless a check contradicted that exact reading. Then the weekly ring reads **No recent data** until a check reports the weekly limit again, Claude Code reports a different value, or the rejection expires. Meanwhile checks run once a minute after new status-line activity, rather than every 15 minutes. The 5-hour ring keeps its own reading and age, and the Fable row is not affected.
+
+**The Fable row** sits between the rings and the update time. If Claude Code is missing, `/usage` prints no Fable line, or your plan has no Fable limit, the row is simply not shown. It is also hidden when the status-line cache comes from another Claude profile, because the check reports on Agent Gauge's own login.
 
 ### Existing custom status line
 
@@ -103,6 +116,16 @@ The exact wrapper depends on how your existing command reads stdin. The installe
 When Agent Gauge writes the status line itself, the command is just the helper's path. If your home folder's path contains spaces or shell characters, the path is single-quoted. Agent Gauge reads and writes `~/.claude` only, so it doesn't follow `CLAUDE_CONFIG_DIR`. If you set that variable, connect the status line by hand as shown above.
 
 If you later uninstall Agent Gauge, remove that tee segment from your custom statusLine command manually. The uninstaller refuses to delete the helper while a custom status line still references it.
+
+### Claude profiles
+
+The helper records which Claude profile each cache snapshot came from: the default `~/.claude` when `CLAUDE_CONFIG_DIR` is unset, or the variable's value exactly as written (for a relative value, also the folder it resolved to). If `CLAUDE_SECURESTORAGE_CONFIG_DIR` is set, which makes Claude Code pick its Keychain login from that value instead, the helper records that value too, exactly as written, so two sessions with the same `CLAUDE_CONFIG_DIR` but different Keychain logins count as different profiles. It never records account details or credentials. The exact text matters because different values can select different Claude logins, even if they point to the same folder. Agent Gauge compares profile identifiers byte for byte, so it does not combine readings when two identifiers differ only in Unicode normalization. This does not imply that Claude Code uses different Keychain items for those identifiers. When the profile changes, or the helper first replaces a cache written by an older helper, it does not carry windows over from the previous snapshot.
+
+Agent Gauge runs `/usage` under its own profile: the default `~/.claude`, or an absolute `CLAUDE_CONFIG_DIR` and `CLAUDE_SECURESTORAGE_CONFIG_DIR` set for the app itself, which it passes to Claude Code unchanged. A check only replaces or judges status-line readings recorded under that same profile. Readings from another profile, or from a helper too old to record one, show as the status line reported them.
+
+A relative or empty `CLAUDE_CONFIG_DIR` or `CLAUDE_SECURESTORAGE_CONFIG_DIR` may depend on the working folder. `/usage` runs in an empty folder of Agent Gauge's own, so that Claude Code starting up does not make macOS ask for access to Desktop, Documents or Downloads. It could only reach a relative profile by changing the value, which would read a different login, so in that case Agent Gauge does not run `/usage`: the status line's weekly reading shows unchecked and there is no Fable row.
+
+If `CLAUDE_CODE_OAUTH_TOKEN` is set in a status-line session, even to an empty value, the helper records only that the variable is present. It does not read the token or identify the account. Agent Gauge shows that capture without weekly verification or a Fable row. A capture with the token set cannot carry over a missing window from an earlier capture, since the two may be from different accounts. If the variable is set for Agent Gauge itself, it does not run `/usage` at all.
 
 ### Diagnostics
 

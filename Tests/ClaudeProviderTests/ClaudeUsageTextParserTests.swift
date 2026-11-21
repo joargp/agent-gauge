@@ -4,6 +4,89 @@ import XCTest
 import GaugeCore
 
 final class ClaudeUsageTextParserTests: XCTestCase {
+    func testWeeklyParserSelectsAllModelsNotFable() {
+        let text = """
+        Current week (Fable): 98% used · resets Nov 19 at 7:59pm (Europe/Oslo)
+        Current week (all models): 93% used · resets Nov 19 at 7:59pm (Europe/Oslo)
+        """
+        let now = Date(timeIntervalSince1970: 1_795_096_700)
+        let weekly = ClaudeUsageTextParser.parseWeekly(text, now: now)
+        XCTAssertEqual(weekly?.remainingPercent, 7)
+        XCTAssertEqual(weekly?.resetsAt, Date(timeIntervalSince1970: 1_795_114_740))
+        XCTAssertNil(ClaudeUsageTextParser.parseWeekly(String(text.prefix(while: { !$0.isNewline })), now: now))
+    }
+
+    func testWeeklyParserRequiresAResetInTheNextSevenDays() {
+        let now = date(2026, 11, 20, 10, 0)
+        for reset in [
+            "Nov 18 at 8pm", // An expired reset, not a reset next year.
+            "Nov 20 at 9am",
+            "Nov 20 at 10am",
+            "Nov 27 at 10:01am",
+            "Nov 28, 2026 at 10am",
+            "Nov 31 at 10am"
+        ] {
+            let line = "Current week (all models): 93% used · resets \(reset) (Europe/Oslo)"
+            XCTAssertNil(ClaudeUsageTextParser.parseWeekly(line, now: now), reset)
+        }
+        let line = "Current week (all models): 93% used · resets Nov 27 at 10am (Europe/Oslo)"
+        XCTAssertEqual(ClaudeUsageTextParser.parseWeekly(line, now: now)?.resetsAt, date(2026, 11, 27, 10, 0))
+    }
+
+    func testWeeklyParserAcceptsYearlessResetInEarlyJanuary() {
+        let december = date(2026, 12, 30, 10, 0)
+        let line = "Current week (all models): 93% used · resets Jan 3 at 9am (Europe/Oslo)"
+        XCTAssertEqual(ClaudeUsageTextParser.parseWeekly(line, now: december)?.resetsAt, date(2027, 1, 3, 9, 0))
+    }
+
+    func testWeeklyParserRejectsNonexistentSpringForwardTime() {
+        let now = date(2026, 3, 28, 12, 0)
+        let prefix = "Current week (all models): 93% used · resets Mar 29 at "
+        let zone = " (Europe/Oslo)"
+        XCTAssertNil(ClaudeUsageTextParser.parseWeekly(prefix + "2:30am" + zone, now: now))
+        XCTAssertEqual(ClaudeUsageTextParser.parseWeekly(prefix + "1:59am" + zone, now: now)?.resetsAt,
+                       date(2026, 3, 29, 1, 59))
+        XCTAssertEqual(ClaudeUsageTextParser.parseWeekly(prefix + "3am" + zone, now: now)?.resetsAt,
+                       date(2026, 3, 29, 3, 0))
+    }
+
+    func testWeeklyParserRejectsAmbiguousFallBackTime() {
+        let now = date(2026, 10, 24, 12, 0)
+        let prefix = "Current week (all models): 93% used · resets Oct 25, 2026 at "
+        let zone = " (Europe/Oslo)"
+        let ambiguous = prefix + "2:30am" + zone
+        XCTAssertNil(ClaudeUsageTextParser.parseWeekly(ambiguous, now: now))
+        let betweenOccurrences = date(2026, 10, 25, 3, 0).addingTimeInterval(-3_600)
+        XCTAssertNil(ClaudeUsageTextParser.parseWeekly(ambiguous, now: betweenOccurrences))
+        XCTAssertEqual(ClaudeUsageTextParser.parseWeekly(prefix + "1:59am" + zone, now: now)?.resetsAt,
+                       date(2026, 10, 25, 1, 59))
+        XCTAssertEqual(ClaudeUsageTextParser.parseWeekly(prefix + "3am" + zone, now: now)?.resetsAt,
+                       date(2026, 10, 25, 3, 0))
+    }
+
+    func testWeeklyParserRejectsAmbiguousHalfHourFallBackTime() {
+        let now = date(2026, 4, 4, 12, 0)
+        let line = "Current week (all models): 93% used · resets Apr 5 at 1:45am (Australia/Lord_Howe)"
+        XCTAssertNil(ClaudeUsageTextParser.parseWeekly(line, now: now))
+    }
+
+    func testInvalidExplicitResetZoneIsRejectedOnlyForWeekly() throws {
+        let now = date(2026, 11, 10, 10, 0)
+        let reset = "Nov 12 at 8pm (Invalid/Zone)"
+        XCTAssertNil(ClaudeUsageTextParser.parseWeekly(
+            "Current week (all models): 93% used · resets \(reset)", now: now
+        ))
+
+        let fable = try XCTUnwrap(ClaudeUsageTextParser.parseFable(
+            "Current week (Fable): 5% used · resets \(reset)", now: now
+        ))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        XCTAssertEqual(fable.window.resetsAt, calendar.date(from: DateComponents(
+            year: 2026, month: 11, day: 12, hour: 20
+        )))
+    }
+
     private let oslo = TimeZone(identifier: "Europe/Oslo")!
 
     /// 2026-11-12 10:00 in Oslo.

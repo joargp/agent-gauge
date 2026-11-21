@@ -1,6 +1,6 @@
 import Foundation
 
-public struct UsageWindow: Equatable, Sendable {
+public struct UsageWindow: Hashable, Sendable {
     public let usedPercent: Double
     public let resetsAt: Date?
 
@@ -50,8 +50,9 @@ public enum DataFreshness: Equatable, Sendable {
 public enum WindowDisplayState: Equatable, Sendable {
     /// Fresh window data.
     case present(UsageWindow)
-    /// The last known `resets_at` passed without a newer reading; usage is
-    /// unknown until the provider reports again.
+    /// The last known `resets_at` passed without a newer reading, or the
+    /// provider knows its last reading is wrong; usage is unknown until the
+    /// provider reports again.
     case rolledOver
     /// No data read for this window yet.
     case awaitingCapture
@@ -77,12 +78,17 @@ public struct UsageSnapshot: Equatable, Sendable {
     /// or subscription plan.
     public let badge: String?
     public let capturedAt: Date
+    public let fiveHourCapturedAt: Date?
+    public let weeklyCapturedAt: Date?
     /// True when the provider reports every window the plan has, so an absent
     /// window means no such limit rather than a reading still to come.
     public let absentWindowsHaveNoLimit: Bool
     /// Optional extra weekly limit for one model. Nil when the plan has none
     /// or it could not be read.
     public let subLimit: SubLimit?
+    /// True when the provider withheld a weekly reading it knows is wrong
+    /// and has no trustworthy value to show instead.
+    public let weeklyUnavailable: Bool
 
     public init(
         fiveHourWindow: UsageWindow?,
@@ -90,14 +96,20 @@ public struct UsageSnapshot: Equatable, Sendable {
         badge: String?,
         capturedAt: Date,
         absentWindowsHaveNoLimit: Bool = false,
-        subLimit: SubLimit? = nil
+        subLimit: SubLimit? = nil,
+        fiveHourCapturedAt: Date? = nil,
+        weeklyCapturedAt: Date? = nil,
+        weeklyUnavailable: Bool = false
     ) {
         self.fiveHourWindow = fiveHourWindow
         self.weeklyWindow = weeklyWindow
         self.badge = badge
         self.capturedAt = capturedAt
+        self.fiveHourCapturedAt = fiveHourWindow.map { _ in fiveHourCapturedAt ?? capturedAt }
+        self.weeklyCapturedAt = weeklyWindow.map { _ in weeklyCapturedAt ?? capturedAt }
         self.absentWindowsHaveNoLimit = absentWindowsHaveNoLimit
         self.subLimit = subLimit
+        self.weeklyUnavailable = weeklyWindow == nil && weeklyUnavailable
     }
 
     public func withSubLimit(_ subLimit: SubLimit?) -> UsageSnapshot {
@@ -107,7 +119,10 @@ public struct UsageSnapshot: Equatable, Sendable {
             badge: badge,
             capturedAt: capturedAt,
             absentWindowsHaveNoLimit: absentWindowsHaveNoLimit,
-            subLimit: subLimit
+            subLimit: subLimit,
+            fiveHourCapturedAt: fiveHourCapturedAt,
+            weeklyCapturedAt: weeklyCapturedAt,
+            weeklyUnavailable: weeklyUnavailable
         )
     }
 
@@ -128,8 +143,18 @@ public struct UsageSnapshot: Equatable, Sendable {
             < UsageFormatting.wholePercent(weekly.remainingPercent)
     }
 
-    public func freshness(now: Date = Date()) -> DataFreshness {
-        DataFreshness(capturedAt: capturedAt, now: now)
+    public func freshness(now: Date = Date()) -> DataFreshness? {
+        displayCapturedAt(now: now).map { DataFreshness(capturedAt: $0, now: now) }
+    }
+
+    /// A shared age label must not be newer than either displayed main window.
+    public func displayCapturedAt(now: Date) -> Date? {
+        let fiveHour = fiveHourWindow?.isRolledOver(now: now) == false ? fiveHourCapturedAt : nil
+        let weekly = weeklyWindow?.isRolledOver(now: now) == false ? weeklyCapturedAt : nil
+        if let oldest = [fiveHour, weekly].compactMap({ $0 }).min() { return oldest }
+        // A rejected redraw cannot supply the age, even if Fable is visible.
+        if weeklyUnavailable { return nil }
+        return capturedAt
     }
 
     public func fiveHourState(now: Date = Date()) -> WindowDisplayState {
@@ -137,7 +162,7 @@ public struct UsageSnapshot: Equatable, Sendable {
     }
 
     public func weeklyState(now: Date = Date()) -> WindowDisplayState {
-        displayState(for: weeklyWindow, now: now)
+        weeklyUnavailable ? .rolledOver : displayState(for: weeklyWindow, now: now)
     }
 
     private func displayState(for window: UsageWindow?, now: Date) -> WindowDisplayState {
