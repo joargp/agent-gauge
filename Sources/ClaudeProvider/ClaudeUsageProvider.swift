@@ -28,20 +28,20 @@ public struct ClaudeUsageProvider: UsageProvider {
     public func readUsage(userInitiated: Bool) async throws -> UsageSnapshot {
         let cache = try readCache()
         let profile = subLimitReader.configProfile
-        _ = await subLimitReader.currentReading(
+        await subLimitReader.pollIfNeeded(
             userInitiated: userInitiated,
             capturedAt: cache.snapshot.capturedAt,
-            statuslineWeekly: cache.matches(profile) ? cache.snapshot.weeklyWindow : nil
+            statuslineWeekly: cache.relation(to: profile) == .matching ? cache.snapshot.weeklyWindow : nil
         )
         // A statusline write may have landed while /usage was running.
         let latest = (try? readCache()) ?? cache
-        let matches = latest.matches(profile)
+        let relation = latest.relation(to: profile)
         let reading = await subLimitReader.reconcile(
-            statuslineWeekly: matches ? latest.snapshot.weeklyWindow : nil,
+            statuslineWeekly: relation == .matching ? latest.snapshot.weeklyWindow : nil,
             capturedAt: latest.snapshot.weeklyCapturedAt
         )
-        let fable = latest.conflicts(with: profile) ? nil : reading.fable
-        guard matches else { return latest.snapshot.withSubLimit(fable) }
+        let fable = relation == .different ? nil : reading.fable
+        guard relation == .matching else { return latest.snapshot.withSubLimit(fable) }
 
         let snapshot = latest.snapshot
         if let (weekly, checkedAt) = reading.verifiedWeekly(
@@ -58,19 +58,18 @@ public struct ClaudeUsageProvider: UsageProvider {
     }
 
     private struct CachedUsage {
+        enum ProfileRelation {
+            case matching, unverified, different
+        }
+
         let snapshot: UsageSnapshot
         let configDir: String?
 
-        /// At least one window was captured and its profile matches the CLI.
-        func matches(_ profile: String?) -> Bool {
-            guard let profile, ClaudeConfigProfile.identifiersMatch(configDir, profile) else { return false }
-            return snapshot.fiveHourWindow != nil || snapshot.weeklyWindow != nil
-        }
-
-        /// Some stored window is known to come from another profile.
-        func conflicts(with profile: String?) -> Bool {
-            guard let profile, let configDir else { return false }
-            return !ClaudeConfigProfile.identifiersMatch(configDir, profile)
+        func relation(to profile: String?) -> ProfileRelation {
+            guard let profile, let configDir else { return .unverified }
+            guard ClaudeConfigProfile.identifiersMatch(configDir, profile) else { return .different }
+            guard snapshot.fiveHourWindow != nil || snapshot.weeklyWindow != nil else { return .unverified }
+            return .matching
         }
     }
 
@@ -80,12 +79,8 @@ public struct ClaudeUsageProvider: UsageProvider {
             throw ClaudeUsageError.noCacheYet
         }
         do {
-            let data = try Data(contentsOf: url)
-            let payload = try UsageCacheDecoder.decodePayload(data)
-            return CachedUsage(
-                snapshot: try UsageCacheDecoder.snapshot(from: payload),
-                configDir: payload.configDir
-            )
+            let cache = try UsageCacheDecoder.decodeCached(Data(contentsOf: url))
+            return CachedUsage(snapshot: cache.snapshot, configDir: cache.configDir)
         } catch let error as ClaudeUsageError {
             throw error
         } catch {
@@ -106,6 +101,7 @@ private extension UsageSnapshot {
             weeklyWindow: weekly,
             badge: badge,
             capturedAt: capturedAt,
+            absentWindowsHaveNoLimit: absentWindowsHaveNoLimit,
             subLimit: subLimit,
             fiveHourCapturedAt: fiveHourCapturedAt,
             weeklyCapturedAt: weeklyCapturedAt,

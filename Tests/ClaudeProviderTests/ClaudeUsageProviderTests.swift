@@ -7,19 +7,9 @@ final class ClaudeUsageProviderTests: XCTestCase {
     private static let profile = "/Users/test/.claude"
     private static let otherProfile = "/Users/test/.claude-work"
 
-    private actor ScriptedCLI {
-        var outcomes: [SubLimitReader.Outcome]
-
-        init(_ outcomes: [SubLimitReader.Outcome]) { self.outcomes = outcomes }
-
-        func fetch() -> SubLimitReader.Outcome { outcomes.removeFirst() }
-    }
-
     func testFailedVerificationFallsBackToNewerStatuslineCorrection() async throws {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let locations = CacheLocations(homeDirectory: dir)
-        try FileManager.default.createDirectory(at: locations.installDirectory, withIntermediateDirectories: true)
+        let locations = try makeLocations()
+        defer { try? FileManager.default.removeItem(at: locations.homeDirectory) }
         let now = Date(timeIntervalSince1970: floor(Date().timeIntervalSince1970))
         let reset = now.addingTimeInterval(3_600)
         let old = UsageWindow(usedPercent: 92, resetsAt: reset)
@@ -28,36 +18,20 @@ final class ClaudeUsageProviderTests: XCTestCase {
         let reader = SubLimitReader(configProfile: Self.profile, fetch: { await cli.fetch() }, now: { clock.now })
         let provider = ClaudeUsageProvider(locations: locations, subLimitReader: reader)
 
-        func writeCache(used: Int, capturedAt: Date) throws {
-            let cache = Data(#"{"captured_at":\#(capturedAt.timeIntervalSince1970),"config_dir":"\#(Self.profile)","seven_day":{"used_percentage":\#(used),"resets_at":\#(reset.timeIntervalSince1970)}}"#.utf8)
-            try cache.write(to: locations.cacheFile, options: .atomic)
-        }
-
-        try writeCache(used: 92, capturedAt: now)
+        try writeCache(locations, weekly: (92, reset), capturedAt: now, profile: Self.profile)
         let initial = try await provider.readUsage(userInitiated: true)
         XCTAssertEqual(initial.weeklyWindow?.remainingPercent, 8)
 
         clock.advance(61)
-        try writeCache(used: 54, capturedAt: clock.now)
+        try writeCache(locations, weekly: (54, reset), capturedAt: clock.now, profile: Self.profile)
         let corrected = try await provider.readUsage(userInitiated: true)
         XCTAssertEqual(corrected.weeklyWindow?.remainingPercent, 46)
         XCTAssertEqual(corrected.weeklyCapturedAt, clock.now)
     }
 
-    private final class TestClock: @unchecked Sendable {
-        private let lock = NSLock()
-        private var date: Date
-
-        init(_ date: Date) { self.date = date }
-        var now: Date { lock.withLock { date } }
-        func advance(_ seconds: TimeInterval) { lock.withLock { date.addTimeInterval(seconds) } }
-    }
-
     func testVerifiedWeeklyCorrectionWinsOverStatuslineWithoutChangingFiveHourAge() async throws {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let locations = CacheLocations(homeDirectory: dir)
-        try FileManager.default.createDirectory(at: locations.installDirectory, withIntermediateDirectories: true)
+        let locations = try makeLocations()
+        defer { try? FileManager.default.removeItem(at: locations.homeDirectory) }
 
         let fiveHourAt = Date(timeIntervalSince1970: 1_800_000_000)
         let checkedAt = fiveHourAt.addingTimeInterval(600)
@@ -79,10 +53,8 @@ final class ClaudeUsageProviderTests: XCTestCase {
     }
 
     func testFallsBackToStatuslineWhenCLIIsUnavailable() async throws {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let locations = CacheLocations(homeDirectory: dir)
-        try FileManager.default.createDirectory(at: locations.installDirectory, withIntermediateDirectories: true)
+        let locations = try makeLocations()
+        defer { try? FileManager.default.removeItem(at: locations.homeDirectory) }
         let cache = Data(#"{"captured_at":1800000600,"seven_day":{"used_percentage":92,"resets_at":1800003600}}"#.utf8)
         try cache.write(to: locations.cacheFile)
         let reader = SubLimitReader(configProfile: Self.profile, fetch: { .failed }, now: { Date(timeIntervalSince1970: 1_800_000_610) })
@@ -522,15 +494,13 @@ final class ClaudeUsageProviderTests: XCTestCase {
         let reset = now.addingTimeInterval(86_400)
         let clock = TestClock(now)
         let profile = Self.profile
-        let runs = ScriptedCLI([.failed])
-        let first = FirstRun()
-        let reader = SubLimitReader(configProfile: profile, fetch: {
-            guard await first.claim() else { return await runs.fetch() }
+        let cli = ScriptedCLI([.failed]) {
             clock.advance(5)
             try? Self.writeCache(locations, weekly: (54, reset), capturedAt: clock.now, profile: profile)
             clock.advance(10)
             return .reading(weekly: UsageWindow(usedPercent: 92, resetsAt: reset), fable: nil)
-        }, now: { clock.now })
+        }
+        let reader = SubLimitReader(configProfile: profile, fetch: { await cli.fetch() }, now: { clock.now })
         let provider = ClaudeUsageProvider(locations: locations, subLimitReader: reader)
 
         try writeCache(locations, weekly: (92, reset), capturedAt: now.addingTimeInterval(-60), profile: profile)
@@ -554,14 +524,12 @@ final class ClaudeUsageProviderTests: XCTestCase {
         let reset = now.addingTimeInterval(86_400)
         let clock = TestClock(now)
         let profile = Self.profile
-        let runs = ScriptedCLI([.reading(weekly: UsageWindow(usedPercent: 92, resetsAt: reset), fable: nil), .failed])
-        let first = FirstRun()
-        let reader = SubLimitReader(configProfile: profile, fetch: {
-            guard await first.claim() else { return await runs.fetch() }
+        let cli = ScriptedCLI([.reading(weekly: UsageWindow(usedPercent: 92, resetsAt: reset), fable: nil), .failed]) {
             try? Self.writeCache(locations, weekly: (54, reset), capturedAt: clock.now, profile: profile)
             clock.advance(15)
             return .reading(weekly: UsageWindow(usedPercent: 92, resetsAt: reset), fable: nil)
-        }, now: { clock.now })
+        }
+        let reader = SubLimitReader(configProfile: profile, fetch: { await cli.fetch() }, now: { clock.now })
         let provider = ClaudeUsageProvider(locations: locations, subLimitReader: reader)
 
         try writeCache(locations, weekly: (92, reset), capturedAt: now, profile: profile)
@@ -585,14 +553,12 @@ final class ClaudeUsageProviderTests: XCTestCase {
         let reset = now.addingTimeInterval(86_400)
         let clock = TestClock(now)
         let profile = Self.profile
-        let runs = ScriptedCLI(Array(repeating: .failed, count: 2))
-        let first = FirstRun()
-        let reader = SubLimitReader(configProfile: profile, fetch: {
-            guard await first.claim() else { return await runs.fetch() }
+        let cli = ScriptedCLI(Array(repeating: .failed, count: 2)) {
             // An active session reports usage the check may predate.
             try? Self.writeCache(locations, weekly: (95, reset), capturedAt: clock.now, profile: profile)
             return .reading(weekly: UsageWindow(usedPercent: 92, resetsAt: reset), fable: nil)
-        }, now: { clock.now })
+        }
+        let reader = SubLimitReader(configProfile: profile, fetch: { await cli.fetch() }, now: { clock.now })
         let provider = ClaudeUsageProvider(locations: locations, subLimitReader: reader)
 
         try writeCache(locations, weekly: (92, reset), capturedAt: now, profile: profile)
@@ -613,13 +579,11 @@ final class ClaudeUsageProviderTests: XCTestCase {
         let now = Date(timeIntervalSince1970: floor(Date().timeIntervalSince1970 / rounding) * rounding)
         let reset = now.addingTimeInterval(86_400)
         let clock = TestClock(now)
-        let runs = ScriptedCLI([.failed])
-        let first = FirstRun()
-        let reader = SubLimitReader(configProfile: Self.profile, fetch: {
-            guard await first.claim() else { return await runs.fetch() }
+        let cli = ScriptedCLI([.failed]) {
             clock.advance(3)
             return .reading(weekly: UsageWindow(usedPercent: 92, resetsAt: reset), fable: nil)
-        }, now: { clock.now })
+        }
+        let reader = SubLimitReader(configProfile: Self.profile, fetch: { await cli.fetch() }, now: { clock.now })
         let provider = ClaudeUsageProvider(locations: locations, subLimitReader: reader)
 
         try writeCache(locations, weekly: (92, reset), capturedAt: now.addingTimeInterval(-60), profile: Self.profile)
@@ -662,13 +626,31 @@ final class ClaudeUsageProviderTests: XCTestCase {
 
     // MARK: - Helpers
 
-    private actor FirstRun {
-        private var claimed = false
+    private actor ScriptedCLI {
+        private var outcomes: [SubLimitReader.Outcome]
+        private var firstRun: (@Sendable () -> SubLimitReader.Outcome)?
 
-        func claim() -> Bool {
-            defer { claimed = true }
-            return !claimed
+        init(_ outcomes: [SubLimitReader.Outcome], firstRun: (@Sendable () -> SubLimitReader.Outcome)? = nil) {
+            self.outcomes = outcomes
+            self.firstRun = firstRun
         }
+
+        func fetch() -> SubLimitReader.Outcome {
+            if let firstRun {
+                self.firstRun = nil
+                return firstRun()
+            }
+            return outcomes.removeFirst()
+        }
+    }
+
+    private final class TestClock: @unchecked Sendable {
+        private let lock = NSLock()
+        private var date: Date
+
+        init(_ date: Date) { self.date = date }
+        var now: Date { lock.withLock { date } }
+        func advance(_ seconds: TimeInterval) { lock.withLock { date.addTimeInterval(seconds) } }
     }
 
     private actor Counter {

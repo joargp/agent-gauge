@@ -13,7 +13,11 @@ public enum ClaudeConfigProfile {
     static let secureStorageKey = "CLAUDE_SECURESTORAGE_CONFIG_DIR"
     private static let oauthTokenKey = "CLAUDE_CODE_OAUTH_TOKEN"
     /// Marks an explicit token login, not a specific account or Keychain profile.
-    static let explicitOAuth = "explicit-oauth"
+    private static let explicitOAuth = "explicit-oauth"
+
+    static func canMergeWindows(previous: String?, incoming: String?) -> Bool {
+        identifiersMatch(previous, incoming) && !identifiersMatch(incoming, explicitOAuth)
+    }
 
     /// Profile IDs are opaque UTF-8, not human-readable names. Swift's String
     /// equality treats canonically equivalent spellings as equal; we only
@@ -69,62 +73,45 @@ public enum ClaudeConfigProfile {
         currentDirectory: String = FileManager.default.currentDirectoryPath
     ) -> String {
         guard let environment = keychainEnvironment(environment) else { return explicitOAuth }
-        let config = Setting(environment)
+        return profileIdentifier(environment, homeDirectory: homeDirectory, relativeTo: currentDirectory)
+            ?? explicitOAuth
+    }
+
+    /// Relative paths cannot be reproduced by a CLI launched in an empty folder.
+    static func verifiableIdentifier(environment: [String: String], homeDirectory: URL) -> String? {
+        guard !environment.keys.contains(oauthTokenKey) else { return nil }
+        return profileIdentifier(environment, homeDirectory: homeDirectory, relativeTo: nil)
+    }
+
+    private static func profileIdentifier(
+        _ environment: [String: String], homeDirectory: URL, relativeTo currentDirectory: String?
+    ) -> String? {
         let base: String
-        if case .relative(let literal) = config {
+        switch Setting(environment) {
+        case .implicit:
+            base = defaultConfigIdentifier(homeDirectory: homeDirectory)
+        case .absolute(let literal):
+            base = "override:\(literal)"
+        case .relative(let literal):
+            guard let currentDirectory else { return nil }
             // Both the literal (Keychain item) and the folder it resolved to
             // (config files) identify the login.
             base = "relative:\(encode([literal, resolve(literal, in: currentDirectory)]))"
-        } else {
-            base = verifiableConfigIdentifier(config, homeDirectory: homeDirectory) ?? ""
         }
-        switch Setting(environment, key: secureStorageKey) {
-        case .implicit, .absolute:
-            return secureStorageIdentifier(base: base, environment: environment) ?? base
-        case .relative(let literal):
-            // Never equal to an identifier the app can verify (see below).
-            return "relative-securestorage:\(encode([base, literal, resolve(literal, in: currentDirectory)]))"
-        }
-    }
-
-    /// The identifier Agent Gauge can check with its own `/usage` run, or
-    /// nil with an explicit token or a relative override. The CLI runs in
-    /// an empty folder of its own, so it could only reach a relative profile
-    /// by changing the literal value and thus the login.
-    static func verifiableIdentifier(environment: [String: String], homeDirectory: URL) -> String? {
-        guard !environment.keys.contains(oauthTokenKey),
-              let base = verifiableConfigIdentifier(Setting(environment), homeDirectory: homeDirectory)
-        else { return nil }
-        return secureStorageIdentifier(base: base, environment: environment)
-    }
-
-    /// Adds an absolute `CLAUDE_SECURESTORAGE_CONFIG_DIR`, exactly as
-    /// written, to `base`. Nil for a relative or empty one. Unset keeps
-    /// `base` unchanged, so caches from before this variable was recorded
-    /// still match.
-    private static func secureStorageIdentifier(base: String, environment: [String: String]) -> String? {
         switch Setting(environment, key: secureStorageKey) {
         case .implicit:
             return base
         case .absolute(let literal):
             return "securestorage:\(encode([base, literal]))"
-        case .relative:
-            return nil
+        case .relative(let literal):
+            guard let currentDirectory else { return nil }
+            return "relative-securestorage:\(encode([base, literal, resolve(literal, in: currentDirectory)]))"
         }
     }
 
-    private static func verifiableConfigIdentifier(_ setting: Setting, homeDirectory: URL) -> String? {
-        switch setting {
-        case .implicit:
-            return homeDirectory.appendingPathComponent(".claude", isDirectory: true)
-                .standardizedFileURL.resolvingSymlinksInPath().path
-        case .absolute(let literal):
-            // Explicit, even when it names the default folder: Claude Code
-            // then uses a different Keychain item.
-            return "override:\(literal)"
-        case .relative:
-            return nil
-        }
+    private static func defaultConfigIdentifier(homeDirectory: URL) -> String {
+        homeDirectory.appendingPathComponent(".claude", isDirectory: true)
+            .standardizedFileURL.resolvingSymlinksInPath().path
     }
 
     private static func resolve(_ literal: String, in currentDirectory: String) -> String {

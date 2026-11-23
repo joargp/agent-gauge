@@ -14,20 +14,13 @@ public enum ClaudeUsageTextParser {
 
     /// Only the subscription-wide weekly window, never a model-specific cap.
     static func parseWeekly(_ text: String, now: Date) -> UsageWindow? {
-        // A yearless reset can be inferred as next year's date. Only a
-        // reset in the next seven days is evidence about the current week.
-        let latestReset = now.addingTimeInterval(7 * 24 * 60 * 60)
         for rawLine in text.split(whereSeparator: \.isNewline) {
-            let line = String(rawLine)
-            guard let match = lineExpression.firstMatch(
-                in: line, range: NSRange(line.startIndex..., in: line)
-            ), capture(1, in: match, of: line)?.lowercased() == "all models",
-               let used = capture(2, in: match, of: line).flatMap(Double.init),
-               (0...100).contains(used),
-               let reset = capture(3, in: match, of: line),
-               let resetsAt = parseReset(reset, now: now, weeklyThrough: latestReset)
+            guard let row = parseRow(String(rawLine)), row.name.lowercased() == "all models",
+                  (0...100).contains(row.used),
+                  let reset = row.reset.flatMap(resetFields),
+                  let resetsAt = weeklyReset(reset, now: now)
             else { continue }
-            return UsageWindow(usedPercent: used, resetsAt: resetsAt)
+            return UsageWindow(usedPercent: row.used, resetsAt: resetsAt)
         }
         return nil
     }
@@ -36,29 +29,33 @@ public enum ClaudeUsageTextParser {
     /// has no such line (a plan without a Fable cap, or API-key output).
     public static func parseFable(_ text: String, now: Date = Date()) -> SubLimit? {
         for rawLine in text.split(whereSeparator: \.isNewline) {
-            let line = String(rawLine)
-            guard let match = lineExpression.firstMatch(
-                in: line, range: NSRange(line.startIndex..., in: line)
-            ),
-                  let name = capture(1, in: match, of: line),
-                  name.lowercased().hasPrefix("fable"),
-                  let used = capture(2, in: match, of: line).flatMap(Double.init),
-                  used.isFinite
+            guard let row = parseRow(String(rawLine)), row.name.lowercased().hasPrefix("fable"),
+                  row.used.isFinite
             else { continue }
 
-            let resetsAt = capture(3, in: match, of: line).flatMap { parseReset($0, now: now) }
+            let resetsAt = row.reset.flatMap(resetFields).flatMap { fableReset($0, now: now) }
             return SubLimit(
-                name: name,
-                window: UsageWindow(usedPercent: min(100, max(0, used)), resetsAt: resetsAt)
+                name: row.name,
+                window: UsageWindow(usedPercent: min(100, max(0, row.used)), resetsAt: resetsAt)
             )
         }
         return nil
     }
 
-    /// Parses "Nov 12 at 8pm", "Nov 12 at 12:20pm (Europe/Oslo)" and
-    /// "Nov 12, 2027 at 8pm". Without a year, the next matching date is used.
-    /// An all-models reset must also be unique and within the weekly horizon.
-    static func parseReset(_ text: String, now: Date, weeklyThrough latestReset: Date? = nil) -> Date? {
+    private static func parseRow(_ line: String) -> (name: String, used: Double, reset: String?)? {
+        guard let match = lineExpression.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
+              let name = capture(1, in: match, of: line),
+              let used = capture(2, in: match, of: line).flatMap(Double.init)
+        else { return nil }
+        return (name, used, capture(3, in: match, of: line))
+    }
+
+    private struct ResetFields {
+        var components: DateComponents
+        let zoneIdentifier: String?
+    }
+
+    private static func resetFields(_ text: String) -> ResetFields? {
         guard let match = resetExpression.firstMatch(
             in: text, range: NSRange(text.startIndex..., in: text)
         ),
@@ -75,49 +72,57 @@ public enum ClaudeUsageTextParser {
         if hour == 12 { hour = 0 }
         if meridiem == "pm" { hour += 12 }
 
+        return ResetFields(
+            components: DateComponents(
+                year: capture(3, in: match, of: text).flatMap(Int.init),
+                month: month, day: day, hour: hour, minute: minute
+            ),
+            zoneIdentifier: capture(7, in: match, of: text)
+        )
+    }
+
+    /// Verification requires a unique future reset within the weekly window.
+    private static func weeklyReset(_ reset: ResetFields, now: Date) -> Date? {
         var calendar = Calendar(identifier: .gregorian)
-        if let identifier = capture(7, in: match, of: text) {
-            if let zone = TimeZone(identifier: identifier) {
-                calendar.timeZone = zone
-            } else if latestReset != nil {
-                return nil
-            }
+        if let identifier = reset.zoneIdentifier {
+            guard let zone = TimeZone(identifier: identifier) else { return nil }
+            calendar.timeZone = zone
         }
-
-        let explicitYear = capture(3, in: match, of: text).flatMap(Int.init)
         let currentYear = calendar.component(.year, from: now)
-
-        func components(year: Int) -> DateComponents {
-            DateComponents(
-                year: year, month: month, day: day, hour: hour, minute: minute
-            )
+        let latestReset = now.addingTimeInterval(7 * 24 * 60 * 60)
+        // Try next year independently for yearless January resets.
+        for year in reset.components.year.map({ [$0] }) ?? [currentYear, currentYear + 1] {
+            var requested = reset.components
+            requested.year = year
+            requested.second = 0
+            guard let date = calendar.date(from: requested),
+                  date > now, date <= latestReset,
+                  calendar.date(date, matchesComponents: requested),
+                  !isRepeatedLocalTime(date, in: calendar.timeZone)
+            else { continue }
+            return date
         }
+        return nil
+    }
 
-        if let latestReset {
-            // Try next year independently so a yearless January reset can
-            // roll over even if that wall time did not exist this year.
-            for year in explicitYear.map({ [$0] }) ?? [currentYear, currentYear + 1] {
-                var requested = components(year: year)
-                requested.second = 0
-                guard let date = calendar.date(from: requested),
-                      date > now, date <= latestReset,
-                      calendar.date(date, matchesComponents: requested),
-                      !isRepeatedLocalTime(date, in: calendar.timeZone)
-                else { continue }
-                return date
-            }
-            return nil
+    /// Fable's display retains the original, lenient date inference.
+    private static func fableReset(_ reset: ResetFields, now: Date) -> Date? {
+        var calendar = Calendar(identifier: .gregorian)
+        if let zone = reset.zoneIdentifier.flatMap(TimeZone.init(identifier:)) {
+            calendar.timeZone = zone
         }
-
         func date(year: Int) -> Date? {
-            guard let date = calendar.date(from: components(year: year)),
-                  calendar.component(.month, from: date) == month,
-                  calendar.component(.day, from: date) == day
+            var requested = reset.components
+            requested.year = year
+            guard let date = calendar.date(from: requested),
+                  calendar.component(.month, from: date) == requested.month,
+                  calendar.component(.day, from: date) == requested.day
             else { return nil }
             return date
         }
 
-        if let explicitYear { return date(year: explicitYear) }
+        if let explicitYear = reset.components.year { return date(year: explicitYear) }
+        let currentYear = calendar.component(.year, from: now)
         guard let thisYear = date(year: currentYear) else { return nil }
         // A date more than a day in the past means the next year's.
         if thisYear < now.addingTimeInterval(-86_400) {

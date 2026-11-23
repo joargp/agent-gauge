@@ -57,8 +57,7 @@ public enum CaptureRunner {
         // cannot lend windows to a known profile. Two explicit OAuth
         // captures may be from different accounts even with the same marker.
         if let previous = previousPayload,
-           !ClaudeConfigProfile.identifiersMatch(previous.configDir, configDir)
-            || ClaudeConfigProfile.identifiersMatch(configDir, ClaudeConfigProfile.explicitOAuth) {
+           !ClaudeConfigProfile.canMergeWindows(previous: previous.configDir, incoming: configDir) {
             guard roundedAt >= previous.capturedAt,
                   capture.fiveHour != nil || capture.sevenDay != nil else {
                 return CaptureOutcome(cacheData: nil, statusLineText: statusLineText)

@@ -138,14 +138,18 @@ struct MenuBarContentView: View {
 
     private var dataAgeRow: some View {
         TimelineView(.periodic(from: .now, by: 10)) { context in
-            let freshness = store.usage?.freshness(now: context.date)
+            let usage = store.usage
+            let capturedAt = usage?.displayCapturedAt(now: context.date)
+            let freshness = capturedAt.map { DataFreshness(capturedAt: $0, now: context.date) }
 
             HStack(spacing: 6) {
                 Circle()
                     .fill(freshnessDotColor(freshness))
                     .frame(width: 7, height: 7)
 
-                Text(dataAgeDescription(freshness: freshness, now: context.date))
+                Text(dataAgeDescription(
+                    capturedAt: capturedAt, hasSnapshot: usage != nil, freshness: freshness, now: context.date
+                ))
 
                 if freshness == .stale {
                     Text("· \(provider.staleHint)")
@@ -164,9 +168,10 @@ struct MenuBarContentView: View {
         }
     }
 
-    private func dataAgeDescription(freshness: DataFreshness?, now: Date) -> String {
-        let capturedAt = store.usage?.displayCapturedAt(now: now)
-        if capturedAt == nil, store.usage != nil { return "Update time unavailable" }
+    private func dataAgeDescription(
+        capturedAt: Date?, hasSnapshot: Bool, freshness: DataFreshness?, now: Date
+    ) -> String {
+        if capturedAt == nil, hasSnapshot { return "Update time unavailable" }
         if freshness == .stale, provider.describesAgeAsCapture {
             return UsageFormatting.lastCaptureDescription(capturedAt, now: now)
         }

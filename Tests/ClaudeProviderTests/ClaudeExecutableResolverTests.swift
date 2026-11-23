@@ -132,14 +132,9 @@ final class ClaudeExecutableResolverTests: XCTestCase {
     func testCLIGetsTheExactSecureStorageDir() async throws {
         let dir = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let marker = dir.appendingPathComponent("config-dir")
-        let fake = try makeFakeClaude(in: dir, marker: marker)
         let literal = dir.path + "/keychain/../keychain/"
+        let (command, marker) = try fakeCommand(in: dir, environment: ["CLAUDE_SECURESTORAGE_CONFIG_DIR": literal])
 
-        let command = ClaudeUsageCommand(resolver: ClaudeExecutableResolver(
-            environment: ["CLAUDE_GAUGE_CLAUDE_PATH": fake.path, "CLAUDE_SECURESTORAGE_CONFIG_DIR": literal, "PATH": ""],
-            homeDirectory: dir
-        ))
         guard case .found = await command.fetchUsage() else { return XCTFail("Expected a Fable reading") }
         XCTAssertEqual(try String(contentsOf: secureStorageMarker(marker), encoding: .utf8), literal)
         XCTAssertEqual(try String(contentsOf: marker, encoding: .utf8), "", "CLAUDE_CONFIG_DIR stays unset")
@@ -148,13 +143,8 @@ final class ClaudeExecutableResolverTests: XCTestCase {
     func testCLIDoesNotRunForARelativeSecureStorageDir() async throws {
         let dir = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let marker = dir.appendingPathComponent("config-dir")
-        let fake = try makeFakeClaude(in: dir, marker: marker)
+        let (command, marker) = try fakeCommand(in: dir, environment: ["CLAUDE_SECURESTORAGE_CONFIG_DIR": "keychain"])
 
-        let command = ClaudeUsageCommand(resolver: ClaudeExecutableResolver(
-            environment: ["CLAUDE_GAUGE_CLAUDE_PATH": fake.path, "CLAUDE_SECURESTORAGE_CONFIG_DIR": "keychain", "PATH": ""],
-            homeDirectory: dir
-        ))
         XCTAssertNil(command.configProfile)
         guard case .failed = await command.fetchUsage() else { return XCTFail("Expected no reading") }
         XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "Running it would read another login")
@@ -163,14 +153,9 @@ final class ClaudeExecutableResolverTests: XCTestCase {
     func testCLIGetsTheExactAbsoluteOverride() async throws {
         let dir = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let marker = dir.appendingPathComponent("config-dir")
-        let fake = try makeFakeClaude(in: dir, marker: marker)
         let literal = dir.path + "/profile/../profile/"
+        let (command, marker) = try fakeCommand(in: dir, environment: ["CLAUDE_CONFIG_DIR": literal])
 
-        let command = ClaudeUsageCommand(resolver: ClaudeExecutableResolver(
-            environment: ["CLAUDE_GAUGE_CLAUDE_PATH": fake.path, "CLAUDE_CONFIG_DIR": literal, "PATH": ""],
-            homeDirectory: dir
-        ))
         guard case .found = await command.fetchUsage() else { return XCTFail("Expected a Fable reading") }
         XCTAssertEqual(try String(contentsOf: marker, encoding: .utf8), literal)
         XCTAssertEqual(try String(contentsOf: secureStorageMarker(marker), encoding: .utf8), "<unset>")
@@ -179,13 +164,8 @@ final class ClaudeExecutableResolverTests: XCTestCase {
     func testCLIDoesNotRunForARelativeOverride() async throws {
         let dir = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let marker = dir.appendingPathComponent("config-dir")
-        let fake = try makeFakeClaude(in: dir, marker: marker)
+        let (command, marker) = try fakeCommand(in: dir, environment: ["CLAUDE_CONFIG_DIR": "./profile"])
 
-        let command = ClaudeUsageCommand(resolver: ClaudeExecutableResolver(
-            environment: ["CLAUDE_GAUGE_CLAUDE_PATH": fake.path, "CLAUDE_CONFIG_DIR": "./profile", "PATH": ""],
-            homeDirectory: dir
-        ))
         XCTAssertNil(command.configProfile)
         guard case .failed = await command.fetchUsage() else { return XCTFail("Expected no reading") }
         XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "Running it would read another login")
@@ -217,6 +197,18 @@ final class ClaudeExecutableResolverTests: XCTestCase {
     }
 
     // MARK: - Helpers
+
+    private func fakeCommand(
+        in dir: URL, environment: [String: String]
+    ) throws -> (ClaudeUsageCommand, URL) {
+        let marker = dir.appendingPathComponent("config-dir")
+        let fake = try makeFakeClaude(in: dir, marker: marker)
+        var environment = environment
+        environment["CLAUDE_GAUGE_CLAUDE_PATH"] = fake.path
+        environment["PATH"] = ""
+        let resolver = ClaudeExecutableResolver(environment: environment, homeDirectory: dir)
+        return (ClaudeUsageCommand(resolver: resolver), marker)
+    }
 
     private func makeDirectory() throws -> URL {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

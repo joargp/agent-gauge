@@ -65,16 +65,25 @@ public actor SubLimitReader {
     /// from the check that contradicted it. A redraw alone cannot renew it.
     private static let resetlessRejectionLifetime: TimeInterval = 7 * 24 * 60 * 60
 
+    private enum CheckedWeekly {
+        case verified(UsageWindow, during: ClosedRange<Date>)
+        case rolledOverAtCheck
+
+        func hasRolledOver(at date: Date) -> Bool {
+            switch self {
+            case .verified(let window, _): window.isRolledOver(now: date)
+            case .rolledOverAtCheck: true
+            }
+        }
+    }
+
     /// The Claude config folder whose login the CLI reports on. Nil when it
     /// is unknown, so no status-line reading can be matched to it.
     nonisolated let configProfile: String?
     private let fetch: @Sendable () async -> Outcome
     private let now: @Sendable () -> Date
     private var cached: SubLimit?
-    private var weekly: UsageWindow?
-    /// When the check that produced `weekly` ran. Its evidence is from
-    /// some moment within this range.
-    private var weeklyCheckedDuring: ClosedRange<Date>?
+    private var checkedWeekly: CheckedWeekly?
     private var lastAttempt: Date?
     private var lastSuccess: Date?
     private var lastAttemptFailed = false
@@ -119,17 +128,17 @@ public actor SubLimitReader {
         capturedAt: Date?,
         statuslineWeekly: UsageWindow? = nil
     ) async -> Reading {
+        await pollIfNeeded(userInitiated: userInitiated, capturedAt: capturedAt, statuslineWeekly: statuslineWeekly)
+        return makeReading(at: now())
+    }
+
+    func pollIfNeeded(
+        userInitiated: Bool,
+        capturedAt: Date?,
+        statuslineWeekly: UsageWindow?
+    ) async {
         let moment = now()
-        let shown = makeReading(at: moment)
-        let needsVerification = statuslineWeekly.map {
-            !shown.rejects($0) && disagrees($0, at: moment)
-        } ?? false
-        let rolledOver = weekly?.isRolledOver(now: moment) ?? false
-        // A contradicted status-line reading with no checked value to show
-        // in its place leaves the weekly limit unavailable, for example
-        // after `/usage` printed no all-models row.
-        let needsRecovery = statuslineWeekly.map { shown.weekly == nil && shown.rejects($0) } ?? false
-        let isUrgent = userInitiated || needsVerification || rolledOver || needsRecovery
+        let isUrgent = userInitiated || needsFasterPoll(for: statuslineWeekly, at: moment)
         let interval = isUrgent ? Self.refreshInterval : Self.pollInterval
         let isDue = lastAttempt.map { moment.timeIntervalSince($0) >= interval } ?? true
         let hasNewActivity = userInitiated || capturedAt == nil || capturedAt != lastPolledCapture
@@ -146,8 +155,16 @@ public actor SubLimitReader {
         if userInitiated, let inFlight {
             await inFlight.value
         }
+    }
 
-        return makeReading(at: now())
+    private func needsFasterPoll(for statuslineWeekly: UsageWindow?, at moment: Date) -> Bool {
+        if checkedWeekly?.hasRolledOver(at: moment) == true { return true }
+        guard let statuslineWeekly else { return false }
+        if let deadline = rejectedStatuslineWeeklies[statuslineWeekly], deadline > moment {
+            // A rejected reading needs a replacement if no verified value is usable.
+            return currentWeekly(at: moment) == nil || checkedReadingsExpired(at: moment)
+        }
+        return disagrees(statuslineWeekly, at: moment)
     }
 
     /// Capture times are rounded down, so a reading's capture happened
@@ -177,7 +194,8 @@ public actor SubLimitReader {
     /// and is not rejected either.
     func reconcile(statuslineWeekly: UsageWindow?, capturedAt: Date?) -> Reading {
         let current = now()
-        if let statuslineWeekly, let capturedAt, let checkedDuring = weeklyCheckedDuring,
+        if let statuslineWeekly, let capturedAt,
+           case .verified(_, let checkedDuring) = checkedWeekly,
            disagrees(statuslineWeekly, at: current),
            !Self.mayHaveBeenCaptured(at: capturedAt, after: checkedDuring.lowerBound)
         {
@@ -190,31 +208,41 @@ public actor SubLimitReader {
         for (reading, deadline) in rejectedStatuslineWeeklies where deadline <= current {
             rejectedStatuslineWeeklies.removeValue(forKey: reading)
         }
-        if lastAttemptFailed, let lastSuccess,
-           current.timeIntervalSince(lastSuccess) >= Self.staleAfterFailures
-        {
+        if checkedReadingsExpired(at: current) {
             return Reading(
                 evaluatedAt: current,
                 verificationFailed: true,
                 rejectedStatuslineWeeklies: rejectedStatuslineWeeklies
             )
         }
+        let checkStartedAt: Date?
+        if case .verified(_, let during) = checkedWeekly {
+            checkStartedAt = during.lowerBound
+        } else {
+            checkStartedAt = nil
+        }
         return Reading(
             fable: cached.flatMap { $0.window.isRolledOver(now: current) ? nil : $0 },
             weekly: currentWeekly(at: current),
             checkedAt: lastSuccess,
-            checkStartedAt: weeklyCheckedDuring?.lowerBound,
+            checkStartedAt: checkStartedAt,
             evaluatedAt: current,
             verificationFailed: lastAttemptFailed,
             rejectedStatuslineWeeklies: rejectedStatuslineWeeklies
         )
     }
 
+    private func checkedReadingsExpired(at date: Date) -> Bool {
+        guard lastAttemptFailed, let lastSuccess else { return false }
+        return date.timeIntervalSince(lastSuccess) >= Self.staleAfterFailures
+    }
+
     /// The status-line and `/usage` reset times may differ by rounding.
     private static let resetTolerance: TimeInterval = 60
 
     private func currentWeekly(at current: Date) -> UsageWindow? {
-        guard weeklyCheckedDuring != nil, let weekly, !weekly.isRolledOver(now: current) else { return nil }
+        guard case .verified(let weekly, _) = checkedWeekly,
+              !weekly.isRolledOver(now: current) else { return nil }
         return weekly
     }
 
@@ -240,16 +268,17 @@ public actor SubLimitReader {
         switch outcome {
         case .reading(let weekly, let fable):
             let finishedAt = now()
-            self.weekly = weekly
             cached = fable
             lastSuccess = finishedAt
             lastAttemptFailed = false
             // A row from a week that ended by completion is only a rollover
             // marker for retries, not evidence for or against any fallback.
-            weeklyCheckedDuring = nil
-            guard !weekly.isRolledOver(now: finishedAt) else { break }
+            guard !weekly.isRolledOver(now: finishedAt) else {
+                checkedWeekly = .rolledOverAtCheck
+                break
+            }
             let checkedAt = max(startedAt, finishedAt)
-            weeklyCheckedDuring = startedAt...checkedAt
+            checkedWeekly = .verified(weekly, during: startedAt...checkedAt)
             // A reading the CLI now confirms is no longer contradicted.
             for reading in rejectedStatuslineWeeklies.keys where !disagrees(reading, at: finishedAt) {
                 rejectedStatuslineWeeklies.removeValue(forKey: reading)
@@ -262,14 +291,12 @@ public actor SubLimitReader {
         // Without an all-models row there is no verified weekly value, but
         // earlier rejections stay: the readings they cover are still wrong.
         case .found(let limit):
-            weekly = nil
-            weeklyCheckedDuring = nil
+            checkedWeekly = nil
             cached = limit
             lastSuccess = now()
             lastAttemptFailed = false
         case .absent:
-            weekly = nil
-            weeklyCheckedDuring = nil
+            checkedWeekly = nil
             cached = nil
             lastAttemptFailed = false
         case .failed:
