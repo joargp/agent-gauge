@@ -25,5 +25,15 @@
       <description>&lt;h2&gt;Agent Gauge 0.1.6&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;A new app icon and a drag-to-install disk image.&lt;/li&gt;&lt;li&gt;Offers to move itself to Applications, so updates keep working.&lt;/li&gt;&lt;li&gt;The Fable limit refreshes when you open the Claude popover.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;&lt;a href="https://github.com/joargp/agent-gauge/releases/tag/v0.1.6"&gt;Release notes&lt;/a&gt;&lt;/p&gt;</description>
       <enclosure url="https://github.com/joargp/agent-gauge/releases/download/v0.1.6/AgentGauge-0.1.6.zip" type="application/octet-stream" sparkle:edSignature="0irpweI5GUpTVE3aYKe8SRHZxFFrHOAbepTRNQ4ET09EhF+Y+r+1GgF1satVcSfIcMyC/H/fImzNf12xnVR/BQ==" length="3871948" />
     </item>
+    <item>
+      <title>Agent Gauge 0.1.7</title>
+      <pubDate>Mon, 23 Nov 2026 06:45:28 +0000</pubDate>
+      <sparkle:version>1007</sparkle:version>
+      <sparkle:shortVersionString>0.1.7</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:fullReleaseNotesLink>https://github.com/joargp/agent-gauge/releases/tag/v0.1.7</sparkle:fullReleaseNotesLink>
+      <description>&lt;h2&gt;Agent Gauge 0.1.7&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;Fixed stale weekly usage readings from idle Claude Code sessions.&lt;/li&gt;&lt;li&gt;Opening the Claude popover or clicking Refresh now checks the weekly limit directly with Claude Code.&lt;/li&gt;&lt;li&gt;The update time reflects the oldest displayed usage reading.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;&lt;a href="https://github.com/joargp/agent-gauge/releases/tag/v0.1.7"&gt;Release notes&lt;/a&gt;&lt;/p&gt;</description>
+      <enclosure url="https://github.com/joargp/agent-gauge/releases/download/v0.1.7/AgentGauge-0.1.7.zip" type="application/octet-stream" sparkle:edSignature="/g6rOssE3ZmFvhW8uPQqc9+3Oti5Q3O2xbFmS5E06ezH5XpGA+vFqepsWOs1pHbWXopxwKDgNdeq01Gl/XV+DQ==" length="4041213" />
+    </item>
   </channel>
 </rss>
